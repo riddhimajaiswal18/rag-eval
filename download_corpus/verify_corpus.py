@@ -12,7 +12,7 @@ Important:
 
 Checks for each entry:
 1. arXiv ID is present in the current corpus list.
-2. Expected PDF file exists at ./rag_corpus/pdfs/<arxiv_id>.pdf.
+2. Expected PDF file exists at download_corpus/rag_corpus/pdfs/<arxiv_id>.pdf.
 3. The local file has PDF magic bytes.
 4. The arXiv ID returns metadata.
 5. The actual arXiv title is printed for provenance.
@@ -29,7 +29,7 @@ from pathlib import Path
 
 import requests
 
-PDF_DIR = Path("./rag_corpus/pdfs")
+PDF_DIR = Path(__file__).resolve().parent / "rag_corpus" / "pdfs"
 ARXIV_API_URL = "https://export.arxiv.org/api/query"
 REQUEST_DELAY_SECONDS = 3.0
 

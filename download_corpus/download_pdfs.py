@@ -25,9 +25,9 @@ Fixes vs. the original download_papers.py:
     chunk_id it generates, e.g. "{document_id}::{section_slug}::c{n}".
 
 Usage:
-    python downloading_pdfs.py                  # download + extract all
-    python downloading_pdfs.py --limit 10        # first 10 only, for testing
-    python downloading_pdfs.py --skip-download    # re-extract from existing PDFs only
+    uv run python download_corpus/download_pdfs.py                 # download + extract all
+    uv run python download_corpus/download_pdfs.py --limit 10      # first 10 only, for testing
+    uv run python download_corpus/download_pdfs.py --skip-download # re-extract from existing PDFs only
 """
 
 import json
@@ -48,7 +48,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BASE_DIR = Path("./rag_corpus")
+BASE_DIR = Path(__file__).resolve().parent / "rag_corpus"
 PDF_DIR = BASE_DIR / "pdfs"
 TEXT_DIR = BASE_DIR / "extracted_text"
 METADATA_FILE = BASE_DIR / "metadata.json"
@@ -397,11 +397,11 @@ def main():
     parser.add_argument(
         "--skip-download",
         action="store_true",
-        help="Skip the download step; only (re-)extract text from PDFs already in ./rag_corpus/pdfs",
+        help="Skip downloads; re-extract from PDFs in download_corpus/rag_corpus/pdfs",
     )
     args = parser.parse_args()
 
-    logger.info("Script: downloading_pdfs.py")
+    logger.info("Script: download_pdfs.py")
     logger.info(f"Total papers in list: {len(PAPERS)}")
     if args.limit:
         logger.info(f"Limiting to: {args.limit} papers")
