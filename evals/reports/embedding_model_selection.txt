@@ -1,0 +1,9 @@
+Qwen3-Embedding-8B was selected as the embedding model for the RAG retrieval pipeline based on empirical evaluation against competing 
+embedding models. The evaluation covered both single-file (single-paper) evidence retrieval and multi-file (multi-paper) evidence retrieval.
+ In the single-evidence benchmark, Qwen achieved the highest Recall@1, Recall@5, Recall@10, and MRR@10 among the evaluated models. 
+ In the multi-evidence benchmark, where questions could require evidence from multiple papers, Qwen again achieved the highest evidence 
+ recall across @1, @5, and @10 among the models evaluated.
+
+The evaluation measured retrieval quality by ranking corpus chunks according to vector similarity against questions with known 
+ground-truth evidence. This makes the benchmark directly relevant to selecting the embedding model for the retrieval layer,
+ while downstream generation quality will be evaluated separately using RAG evaluation methods such as DeepEval.

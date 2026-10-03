@@ -1,0 +1,4 @@
+model,dim,evidence_recall@1,evidence_precision@1,evidence_coverage@1,paper_coverage@1,evidence_recall@5,evidence_precision@5,evidence_coverage@5,paper_coverage@5,evidence_recall@10,evidence_precision@10,evidence_coverage@10,paper_coverage@10,chunks/s,encode_total_s,query_ms(median),load_s,vram_loaded_GB,vram_peak_GB,peak_gpu_temp_C
+yuan-0.8B-fp16,1024,0.262,0.543,0.262,0.886,0.576,0.246,0.576,0.986,0.724,0.154,0.724,0.986,21.2,11.3,98.4,12.5,1.11,1.34,63
+e5-mistral-7B-4bit,4096,0.119,0.257,0.119,0.771,0.329,0.143,0.329,1.0,0.443,0.097,0.443,1.0,2.4,100.1,158.1,38.4,3.93,4.14,73
+qwen3-8B-4bit,4096,0.367,0.771,0.367,0.943,0.79,0.343,0.79,0.986,0.89,0.191,0.89,0.986,2.3,102.2,175.8,44.0,4.81,5.15,74

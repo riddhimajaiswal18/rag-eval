@@ -1,0 +1,177 @@
+[
+  {
+    "question": "How does the Transformer turn an input sequence into output tokens, and what extra decoder operations enforce left-to-right generation?",
+    "gold_chunk_ids": ["1706.03762::model-architecture::c000", "1706.03762::encoder-and-decoder-stacks::c000"],
+    "gold_paper_ids": ["1706.03762"]
+  },
+  {
+    "question": "How does the Transformer encode token order despite having no recurrence, and what long-range computation advantage do the authors give for self-attention?",
+    "gold_chunk_ids": ["1706.03762::positional-encoding::c000", "1706.03762::why-self-attention::c000"],
+    "gold_paper_ids": ["1706.03762"]
+  },
+  {
+    "question": "How do RAG-Sequence and RAG-Token differ in whether the same retrieved document is used throughout an answer or evidence can change across its tokens?",
+    "gold_chunk_ids": ["2005.11401::rag-sequence-model::c000", "2005.11401::rag-token-model::c000"],
+    "gold_paper_ids": ["2005.11401"]
+  },
+  {
+    "question": "How does the original RAG system retrieve passages for a query and combine them with its generation model to produce an answer?",
+    "gold_chunk_ids": ["2005.11401::abstract::c000", "2005.11401::generator-bart::c000"],
+    "gold_paper_ids": ["2005.11401"]
+  },
+  {
+    "question": "How does RAG benefit both from learning a task-relevant retriever and from replacing its external knowledge index, according to the paper's experiments?",
+    "gold_chunk_ids": ["2005.11401::retrieval-ablations::c000", "2005.11401::index-hot-swapping::c000"],
+    "gold_paper_ids": ["2005.11401"]
+  },
+  {
+    "question": "How do PagedAttention and vLLM's KV cache manager use paging ideas together to manage sequence state in GPU memory?",
+    "gold_chunk_ids": ["2309.06180::pagedattention::c000", "2309.06180::kv-cache-manager::c000"],
+    "gold_paper_ids": ["2309.06180"]
+  },
+  {
+    "question": "How does vLLM reuse prompt state for multiple sampled outputs and for requests that share a system-prompt prefix?",
+    "gold_chunk_ids": ["2309.06180::parallel-sampling::c000", "2309.06180::shared-prefix::c000"],
+    "gold_paper_ids": ["2309.06180"]
+  },
+  {
+    "question": "How does SELF-RAG decide when to retrieve, judge retrieved passages and their support for an answer, and adjust generation toward evidence-backed output?",
+    "gold_chunk_ids": ["2310.11511::self-rag-inference::c000", "2310.11511::self-rag-inference::c001"],
+    "gold_paper_ids": ["2310.11511"]
+  },
+  {
+    "question": "Compared with classic RAG's use of retrieved passages to condition generation, how does SELF-RAG decide whether to retrieve and assess the evidence it uses?",
+    "gold_chunk_ids": ["2005.11401::methods::c000", "2310.11511::abstract::c000", "2310.11511::problem-formalization-and-overview::c001"],
+    "gold_paper_ids": ["2005.11401", "2310.11511"]
+  },
+  {
+    "question": "How does the original RAG paper's DPR retriever represent and search passages, and how does the survey describe combining dense retrieval with sparse retrieval?",
+    "gold_chunk_ids": ["2005.11401::retriever-dpr::c000", "2312.10997::d-embedding::c000"],
+    "gold_paper_ids": ["2005.11401", "2312.10997"]
+  },
+  {
+    "question": "How does the RAG survey distinguish retrieval quality from generation quality, and how do its evaluation aspects define context relevance and answer faithfulness?",
+    "gold_chunk_ids": ["2312.10997::b-evaluation-target::c000", "2312.10997::c-evaluation-aspects::c000"],
+    "gold_paper_ids": ["2312.10997"]
+  },
+  {
+    "question": "How do iterative, recursive, and adaptive retrieval differ in how they use repeated searches, query refinement, or model-chosen retrieval?",
+    "gold_chunk_ids": ["2312.10997::a-iterative-retrieval::c000", "2312.10997::b-recursive-retrieval::c000", "2312.10997::c-adaptive-retrieval::c000"],
+    "gold_paper_ids": ["2312.10997"]
+  },
+  {
+    "question": "What limitations of fixed-size chunking motivate alternative context strategies, and how does hierarchical indexing help choose chunks?",
+    "gold_chunk_ids": ["2312.10997::1-chunking-strategy::c000", "2312.10997::hierarchical-index-structure::c000"],
+    "gold_paper_ids": ["2312.10997"]
+  },
+  {
+    "question": "How does the Transformer compute attention from queries and key-value pairs, and how do multiple learned heads extend that computation?",
+    "gold_chunk_ids": ["1706.03762::attention::c000", "1706.03762::scaled-dot-product-attention::c000", "1706.03762::multi-head-attention::c000"],
+    "gold_paper_ids": ["1706.03762"]
+  },
+  {
+    "question": "How do the Transformer's position-wise feed-forward layers differ from its token embeddings and output-probability layer in their roles?",
+    "gold_chunk_ids": ["1706.03762::position-wise-feed-forward-networks::c000", "1706.03762::embeddings-and-softmax::c000"],
+    "gold_paper_ids": ["1706.03762"]
+  },
+  {
+    "question": "How did the Transformer combine a warm-up learning-rate schedule with dropout and label smoothing during training?",
+    "gold_chunk_ids": ["1706.03762::optimizer::c000", "1706.03762::regularization::c000"],
+    "gold_paper_ids": ["1706.03762"]
+  },
+  {
+    "question": "How did the authors test whether the Transformer generalizes beyond translation, and what parsing challenge and result did they report?",
+    "gold_chunk_ids": ["1706.03762::english-constituency-parsing::c000", "1706.03762::abstract::c000"],
+    "gold_paper_ids": ["1706.03762"]
+  },
+  {
+    "question": "What limitations of storing knowledge only in model parameters motivate RAG, and how does the paper combine parametric and retrievable memory?",
+    "gold_chunk_ids": ["2005.11401::introduction::c000", "2005.11401::introduction::c001"],
+    "gold_paper_ids": ["2005.11401"]
+  },
+  {
+    "question": "Why can RAG-Token help generate Jeopardy clues that combine multiple facts, and how does the model use retrieved documents while decoding?",
+    "gold_chunk_ids": ["2005.11401::rag-token::c000", "2005.11401::jeopardy-question-generation::c001"],
+    "gold_paper_ids": ["2005.11401"]
+  },
+  {
+    "question": "When vLLM runs out of GPU KV-cache blocks, how does it select requests to preempt and what are its two ways to resume them?",
+    "gold_chunk_ids": ["2309.06180::scheduling-and-preemption::c000", "2309.06180::scheduling-and-preemption::c001"],
+    "gold_paper_ids": ["2309.06180"]
+  },
+  {
+    "question": "What models and request workloads were used to evaluate vLLM, and how did its batching compare on the ShareGPT and Alpaca traces?",
+    "gold_chunk_ids": ["2309.06180::experimental-setup::c000", "2309.06180::evaluation::c000"],
+    "gold_paper_ids": ["2309.06180"]
+  },
+  {
+    "question": "How does KV-cache block size affect GPU utilization and fragmentation, and what attention-kernel overhead did PagedAttention introduce?",
+    "gold_chunk_ids": ["2309.06180::impact-of-block-size::c000", "2309.06180::kernel-microbenchmark::c000"],
+    "gold_paper_ids": ["2309.06180"]
+  },
+  {
+    "question": "What KV-cache problems limit batching in existing LLM services, and what system-level improvements does vLLM report?",
+    "gold_chunk_ids": ["2309.06180::abstract::c000", "2309.06180::introduction::c004"],
+    "gold_paper_ids": ["2309.06180"]
+  },
+  {
+    "question": "How can SELF-RAG tune evidence support versus retrieval frequency at inference, and what performance trade-offs did the authors observe?",
+    "gold_chunk_ids": ["2310.11511::effects-of-inference-time-customization::c000", "2310.11511::effects-of-inference-time-customization::c001"],
+    "gold_paper_ids": ["2310.11511"]
+  },
+  {
+    "question": "What do SELF-RAG's retrieval, relevance, support, and usefulness reflection signals mean, and how well did GPT-4 annotations agree with human checks?",
+    "gold_chunk_ids": ["2310.11511::a-self-rag-details-a-1-reflection-tokens::c000", "2310.11511::details-of-gpt-4-based-data-collections::c000"],
+    "gold_paper_ids": ["2310.11511"]
+  },
+  {
+    "question": "How does SELF-RAG build generator training examples to reflect its retrieval process, and how can inference filtering reject unsupported continuations?",
+    "gold_chunk_ids": ["2310.11511::training-the-generator-model::c000", "2310.11511::self-rag-inference::c002"],
+    "gold_paper_ids": ["2310.11511"]
+  },
+  {
+    "question": "What do SELF-RAG's results suggest about gains from self-reflection compared with fine-tuning alone or adding retrieval only at test time?",
+    "gold_chunk_ids": ["2310.11511::main-results::c000", "2310.11511::main-results::c002"],
+    "gold_paper_ids": ["2310.11511"]
+  },
+  {
+    "question": "How does the survey distinguish Naive, Advanced, and Modular RAG in the evolution of their indexing, retrieval, and pipeline designs?",
+    "gold_chunk_ids": ["2312.10997::a-naive-rag::c000", "2312.10997::b-advanced-rag::c000", "2312.10997::c-modular-rag::c000"],
+    "gold_paper_ids": ["2312.10997"]
+  },
+  {
+    "question": "How does the survey compare RAG with fine-tuning for updating external knowledge versus adapting a model's domain behavior or style?",
+    "gold_chunk_ids": ["2312.10997::d-rag-vs-fine-tuning::c000", "2312.10997::b-llm-fine-tuning::c000"],
+    "gold_paper_ids": ["2312.10997"]
+  },
+  {
+    "question": "Why does the survey recommend curating retrieved context, and how do reranking and compression address different sources of noise?",
+    "gold_chunk_ids": ["2312.10997::a-context-curation::c000", "2312.10997::a-context-curation::c001"],
+    "gold_paper_ids": ["2312.10997"]
+  },
+  {
+    "question": "How can a complex or unclear retrieval query be decomposed, transformed and checked before the system routes it to a suitable pipeline?",
+    "gold_chunk_ids": ["2312.10997::sub-query::c000", "2312.10997::chain-of-verification-cove::c000", "2312.10997::using-the-step-back-prompting-method::c000"],
+    "gold_paper_ids": ["2312.10997"]
+  },
+  {
+    "question": "Beyond question answering, which RAG downstream task families does the survey identify, and what example datasets does it list for information extraction and reasoning?",
+    "gold_chunk_ids": ["2312.10997::a-downstream-task::c000", "2312.10997::task::c000"],
+    "gold_paper_ids": ["2312.10997"]
+  },
+  {
+    "question": "How has the survey's view of RAG retrieval broadened across data types, and what range of retrieval unit sizes does it describe?",
+    "gold_chunk_ids": ["2312.10997::1-data-structure::c000", "2312.10997::augmentation-stage::c005"],
+    "gold_paper_ids": ["2312.10997"]
+  },
+  {
+    "question": "What efficiency and verifiability advantages does RAG retain over long-context prompting, and what deployment challenges remain for production systems?",
+    "gold_chunk_ids": ["2312.10997::a-rag-vs-long-context::c000", "2312.10997::e-production-ready-rag::c000"],
+    "gold_paper_ids": ["2312.10997"]
+  },
+  {
+    "question": "How do the survey's named RAG benchmarks and automated evaluation tools differ in focus, and which retrieval metrics appear in its metric summary?",
+    "gold_chunk_ids": ["2312.10997::d-evaluation-benchmarks-and-tools::c000", "2312.10997::task::c001"],
+    "gold_paper_ids": ["2312.10997"]
+  }
+]

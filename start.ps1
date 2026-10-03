@@ -27,11 +27,11 @@ finally {
     Pop-Location
 }
 
-if (Test-Path (Join-Path $projectRoot 'evals\eval.json')) {
+if (Test-Path (Join-Path $projectRoot 'evals\embeddings\eval.json')) {
     Write-Host 'Step 3/3: Running embedding model comparison (requires a CUDA GPU)...'
     Push-Location $projectRoot
     try {
-        & $python (Join-Path $projectRoot 'evals\compare_embeddings.py')
+        & $python (Join-Path $projectRoot 'evals\embeddings\compare_embeddings.py')
         if ($LASTEXITCODE -ne 0) {
             throw "compare_embeddings.py failed with exit code $LASTEXITCODE"
         }
@@ -41,8 +41,8 @@ if (Test-Path (Join-Path $projectRoot 'evals\eval.json')) {
     }
 }
 else {
-    Write-Host 'Embedding comparison skipped: evals\eval.json is missing.'
-    Write-Host 'Create evals\eval.json with question/chunk_id pairs, then run .\start.ps1 again.'
+    Write-Host 'Embedding comparison skipped: evals\embeddings\eval.json is missing.'
+    Write-Host 'Create evals\embeddings\eval.json with question/chunk_id pairs, then run .\start.ps1 again.'
 }
 
 Write-Host 'Pipeline finished.'

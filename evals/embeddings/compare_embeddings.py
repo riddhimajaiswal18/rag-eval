@@ -27,7 +27,7 @@ Inputs:
   CHUNKS_DIR/*.json : output of chunking.py, one file per paper, each with a
                        top-level "chunks" list of {"chunk_id", "document_id",
                        "text", ...}.
-  evals/eval.json   : [{"question": "...", "chunk_id": "<real chunk_id>"}, ...]
+  evals/embeddings/eval.json : [{"question": "...", "chunk_id": "<real chunk_id>"}, ...]
                        -- NOT YET CREATED. This still needs to be built before
                        this script can run; see the note in load_data().
 
@@ -43,8 +43,9 @@ this benchmark is only for single evidence ques ie ques that are retrieved only 
 future scope - add a pause button to allow the user to pause the script if the GPU is overheating 
 and add time stamps everywhere to track the time taken for each step of the process.
 
-Run:  uv run python evals/compare_embeddings.py
-Outputs: evals/results.csv, evals/ranks.csv, evals/embeddings/<model>_chunks.npy
+Run:  uv run python evals/embeddings/compare_embeddings.py
+Outputs: evals/embeddings/results.csv, evals/embeddings/ranks.csv,
+         evals/embeddings/embeddings/<model>_chunks.npy, evals/embeddings/logs/
 """
 import gc
 import json
@@ -64,8 +65,10 @@ from transformers import AutoModel, BitsAndBytesConfig
 # relative to preprocessing/data/chunks/ (see chunking.py's layout)
 # ----------------------------------------------------------------------------
 EVALS_DIR = Path(__file__).resolve().parent
-CHUNKS_DIR = EVALS_DIR.parent / "preprocessing" / "data" / "chunks"
+PROJECT_DIR = EVALS_DIR.parents[1]
+CHUNKS_DIR = PROJECT_DIR / "preprocessing" / "data" / "chunks"
 EVAL_FILE = EVALS_DIR / "eval.json"
+LOGS_DIR = EVALS_DIR / "logs"
 
 # ----------------------------------------------------------------------------
 # CONFIG: the 5 shortlisted models
@@ -153,7 +156,7 @@ def load_data():
     and flattens their "chunks" lists into one corpus. Each chunk's
     "chunk_id" is used as its unique id, "document_id" as its paper id.
 
-    evals/eval.json is NOT auto-generated -- it still needs to be written (hand-authored
+    evals/embeddings/eval.json is NOT auto-generated -- it still needs to be written (hand-authored
     or LLM-drafted-then-reviewed) as [{"question": "...", "chunk_id": "<real
     chunk_id from a chunks file>"}, ...] before this script can run.
     """
@@ -182,7 +185,7 @@ def load_data():
     id_to_idx = {c["id"]: i for i, c in enumerate(chunks)}
     evals = [e for e in evals if e["chunk_id"] in id_to_idx]
     if not evals:
-        raise ValueError("None of evals/eval.json's chunk_id values matched a real chunk_id in CHUNKS_DIR -- check for stale ids.")
+        raise ValueError("None of evals/embeddings/eval.json's chunk_id values matched a real chunk_id in CHUNKS_DIR -- check for stale ids.")
 
     gold_idx = np.array([id_to_idx[e["chunk_id"]] for e in evals])
     papers = np.array([c["paper"] for c in chunks])
@@ -395,4 +398,28 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from datetime import datetime
+    import sys
+
+    class Tee:
+        def __init__(self, *streams):
+            self.streams = streams
+
+        def write(self, value):
+            for stream in self.streams:
+                stream.write(value)
+                stream.flush()
+
+        def flush(self):
+            for stream in self.streams:
+                stream.flush()
+
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LOGS_DIR / f"compare_embeddings_{datetime.now():%Y%m%d_%H%M%S}.log"
+    with log_path.open("w", encoding="utf-8") as log_file:
+        original_stdout, original_stderr = sys.stdout, sys.stderr
+        sys.stdout, sys.stderr = Tee(original_stdout, log_file), Tee(original_stderr, log_file)
+        try:
+            main()
+        finally:
+            sys.stdout, sys.stderr = original_stdout, original_stderr
