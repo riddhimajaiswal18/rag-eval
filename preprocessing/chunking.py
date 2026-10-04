@@ -64,6 +64,81 @@ def clean_inline_text(el: ET.Element) -> str:
     return normalize_space("".join(el.itertext()))
 
 
+def element_children(el: ET.Element, name: str) -> List[ET.Element]:
+    """Return descendants with a matching local tag name."""
+    return [child for child in el.iter() if local_name(child.tag) == name]
+
+
+def caption_text(el: ET.Element) -> str:
+    """Build a readable caption from a TEI label and heading."""
+    parts = []
+    for name in ("label", "head"):
+        child = next((c for c in el if local_name(c.tag) == name), None)
+        value = clean_inline_text(child) if child is not None else ""
+        if value:
+            parts.append(value)
+    return ": ".join(parts)
+
+
+def table_parts(table: ET.Element, outer_caption: str = "", context: str = "") -> Dict:
+    """Extract table context and rows for context-preserving chunking."""
+    caption = caption_text(table)
+    caption = ": ".join(part for part in (outer_caption, caption) if part)
+
+    rows = element_children(table, "row")
+    if not rows:
+        content = clean_inline_text(table)
+        return {"type": "table", "caption": caption, "context": context,
+                "headers": [], "rows": [content] if content else []}
+
+    table_rows = []
+    for row in rows:
+        cells = [cell for cell in row if local_name(cell.tag) == "cell"]
+        values = [clean_inline_text(cell) for cell in cells]
+        if any(values):
+            is_header = (
+                row.attrib.get("role", "").lower() in {"label", "head", "header"}
+                or bool(cells) and all(
+                    cell.attrib.get("role", "").lower() in {"label", "head", "header"}
+                    for cell in cells
+                )
+            )
+            table_rows.append((values, is_header))
+    if not table_rows:
+        return {"type": "table", "caption": caption, "headers": [], "rows": []}
+
+    # GROBID commonly marks headers with role="label". When it does not,
+    # use the first row as the header so values retain their column context.
+    header_index = next((i for i, (_, is_header) in enumerate(table_rows) if is_header), None)
+    header_index = 0 if header_index is None else header_index
+    headers = table_rows[header_index][0]
+    data_rows = [row for i, (row, _) in enumerate(table_rows) if i != header_index]
+    return {"type": "table", "caption": caption, "context": context,
+            "headers": headers, "rows": data_rows}
+
+
+def figure_text(figure: ET.Element) -> str:
+    """Keep a figure's caption and explanatory description searchable."""
+    parts = []
+    caption = caption_text(figure)
+    if caption:
+        parts.append("Figure: " + caption)
+    descriptions = [clean_inline_text(child) for child in figure
+                    if local_name(child.tag) in {"figDesc", "p"}]
+    parts.extend("Description: " + value for value in descriptions if value)
+    return "\n".join(parts)
+
+
+def serialize_table(table: Dict) -> str:
+    lines = [table["caption"]] if table.get("caption") else []
+    if table.get("context"):
+        lines.append("Description: " + table["context"])
+    if table.get("headers"):
+        lines.append("Headers: " + " | ".join(table["headers"]))
+    lines.extend("Row: " + " | ".join(row) for row in table.get("rows", []))
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------- PDF/metadata
 def _find_one(directory: Path, document_id: str, ext: str, exact: List[Path]) -> Optional[Path]:
     for p in exact:
@@ -161,18 +236,44 @@ def extract_abstract(root: ET.Element) -> str:
     return "\n\n".join(paras) if paras else clean_inline_text(abstract)
 
 
-def direct_body_blocks(div: ET.Element) -> List[str]:
-    """Text directly in this section; nested <div>s are skipped (flat V1)."""
-    blocks: List[str] = []
-    for child in div:
-        name = local_name(child.tag)
-        if name in {"p", "formula", "note", "item"}:
-            items = [child]
-        elif name in {"list", "listBibl"}:
-            items = [i for i in child if local_name(i.tag) in {"item", "p"}]
-        else:
-            continue
-        blocks += [t for t in (clean_inline_text(i) for i in items) if t]
+def direct_body_blocks(div: ET.Element) -> List[Dict]:
+    """Read section blocks in document order, including nested div content."""
+    blocks: List[Dict] = []
+
+    def visit(parent: ET.Element, include_head: bool = False) -> None:
+        for child in parent:
+            name = local_name(child.tag)
+            if name == "div":
+                visit(child, include_head=True)
+            elif name == "head" and include_head:
+                value = clean_inline_text(child)
+                if value:
+                    blocks.append({"type": "text", "text": value})
+            elif name == "figure":
+                cap = caption_text(child)
+                desc = " ".join(clean_inline_text(c) for c in child
+                                if local_name(c.tag) == "figDesc")
+                tables = [c for c in child if local_name(c.tag) == "table"]
+                if tables:
+                    blocks.extend(table_parts(table, cap, desc) for table in tables)
+                else:
+                    value = figure_text(child)
+                    if value:
+                        blocks.append({"type": "text", "text": value, "figure": True})
+            elif name == "table":
+                blocks.append(table_parts(child))
+            elif name in {"p", "formula", "note", "item"}:
+                value = clean_inline_text(child)
+                if value:
+                    blocks.append({"type": "text", "text": value})
+            elif name in {"list", "listBibl"}:
+                for item in child:
+                    if local_name(item.tag) in {"item", "p"}:
+                        value = clean_inline_text(item)
+                        if value:
+                            blocks.append({"type": "text", "text": value})
+
+    visit(div)
     return blocks
 
 
@@ -180,16 +281,10 @@ def extract_flat_sections(root: ET.Element) -> List[Dict]:
     """Flat list of top-level sections (abstract + body divs), references dropped."""
     sections: List[Dict] = []
 
-    def add(title: str, text: str) -> None:
-        sections.append({
-    "section_title": title,
-    "section_index": len(sections),
-    "text": text,
-})
-
     abstract = extract_abstract(root)
     if abstract:
-        add("Abstract", abstract)
+        sections.append({"section_title": "Abstract", "section_index": len(sections),
+                         "text": abstract, "blocks": [{"type": "text", "text": abstract}]})
 
     body = root.find(".//tei:text/tei:body", NS)
     if body is None:
@@ -201,14 +296,21 @@ def extract_flat_sections(root: ET.Element) -> List[Dict]:
         if title.lower() in REFERENCE_HEADINGS:
             logger.info("Skipping References section.")
             continue
-        text = "\n\n".join(direct_body_blocks(div)).strip()
+        blocks = direct_body_blocks(div)
+        text = "\n\n".join(
+            serialize_table(block) if block["type"] == "table" else block["text"]
+            for block in blocks
+        ).strip()
         if text:
-            add(title or "Body", text)
+            sections.append({"section_title": title or "Body", "section_index": len(sections),
+                             "text": text, "blocks": blocks})
 
     if not sections:  # fallback: loose paragraphs directly under <body>
         paras = [t for t in (clean_inline_text(p) for p in body.findall("tei:p", NS)) if t]
         if paras:
-            add("Body", "\n\n".join(paras))
+            text = "\n\n".join(paras)
+            sections.append({"section_title": "Body", "section_index": len(sections),
+                             "text": text, "blocks": [{"type": "text", "text": text}]})
 
     if not sections:
         raise RuntimeError("No usable sections could be extracted from TEI.")
@@ -233,6 +335,93 @@ def chunk_section(section: Dict, encoding, chunk_size: int = CHUNK_SIZE_TOKENS,
     """Pack sentences into <=chunk_size chunks, prepending sentence-level overlap
     from the previous chunk only if the result still fits in chunk_size."""
     ntok = lambda s: len(encoding.encode(s))
+
+    blocks = section.get("blocks")
+    if blocks and any(b.get("type") == "table" or b.get("figure") for b in blocks):
+        output: List[Dict] = []
+        pending: List[str] = []
+
+        def append_text(value: str) -> None:
+            count = ntok(value)
+            output.append({"text": value, "token_count": count,
+                           "overlap_prev_tokens": 0})
+
+        def flush_text() -> None:
+            if pending:
+                output.extend(chunk_section({"text": "\n\n".join(pending)}, encoding,
+                                            chunk_size, overlap_size))
+                pending.clear()
+
+        block_index = 0
+        while block_index < len(blocks):
+            block = blocks[block_index]
+            if block.get("type") == "table":
+                flush_text()
+                serialized = serialize_table(block)
+                if ntok(serialized) <= chunk_size:
+                    append_text(serialized)
+                    continue
+
+                context_lines = [block["caption"]] if block.get("caption") else []
+                if block.get("context"):
+                    context_lines.append("Description: " + block["context"])
+                if block.get("headers"):
+                    context_lines.append("Headers: " + " | ".join(block["headers"]))
+                context = "\n".join(context_lines)
+                rows = ["Row: " + " | ".join(row) for row in block.get("rows", [])]
+                if not rows:
+                    # Malformed/empty tables still retain their caption/context.
+                    append_text("\n".join(context_lines))
+                    continue
+                current_rows: List[str] = []
+                for row in rows:
+                    candidate = "\n".join([context, *current_rows, row]).strip()
+                    if current_rows and ntok(candidate) > chunk_size:
+                        append_text("\n".join([context, *current_rows]).strip())
+                        current_rows = []
+                    row_text = "\n".join([context, row]).strip()
+                    if ntok(row_text) <= chunk_size:
+                        current_rows.append(row)
+                    else:
+                        if current_rows:
+                            append_text("\n".join([context, *current_rows]).strip())
+                            current_rows = []
+                        room = max(1, chunk_size - ntok(context))
+                        for part in split_large_sentence(row, encoding, room):
+                            append_text("\n".join([context, part]).strip())
+                if current_rows:
+                    append_text("\n".join([context, *current_rows]).strip())
+            elif block.get("figure"):
+                value = block["text"]
+                previous = "\n\n".join(pending)
+                if previous and ntok(previous + "\n\n" + value) <= chunk_size:
+                    pending.clear()
+                else:
+                    flush_text()
+                    previous = ""
+                next_block = blocks[block_index + 1] if block_index + 1 < len(blocks) else None
+                following = (next_block.get("text", "") if next_block
+                             and next_block.get("type") != "table"
+                             and not next_block.get("figure") else "")
+                candidate = "\n\n".join(part for part in (previous, value, following) if part)
+                if following and ntok(candidate) <= chunk_size:
+                    append_text(candidate)
+                    block_index += 1
+                else:
+                    candidate = "\n\n".join(part for part in (previous, value) if part)
+                    if ntok(candidate) <= chunk_size:
+                        append_text(candidate)
+                    else:
+                        for sentence in split_sentences(value):
+                            parts = ([sentence] if ntok(sentence) <= chunk_size
+                                     else split_large_sentence(sentence, encoding, chunk_size))
+                            for part in parts:
+                                append_text(part)
+            else:
+                pending.append(block.get("text", ""))
+            block_index += 1
+        flush_text()
+        return output
 
     sentences: List[str] = []
     for s in split_sentences(section["text"].strip()):
@@ -287,7 +476,7 @@ def build_chunk_document(structured: Dict, encoding) -> Dict:
             chunk_section(section, encoding)
         ):
             all_chunks.append({
-                "chunk_id": f"{doc_id}::{slug}::c{i:03d}",
+                "chunk_id": f"{doc_id}::s{section['section_index']:03d}::{slug}::c{i:03d}",
                 "section_title": title,
                 "section_index": section["section_index"],
                 "chunk_index": i,

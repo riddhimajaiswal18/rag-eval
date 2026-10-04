@@ -48,6 +48,7 @@ Outputs: evals/embeddings/results.csv, evals/embeddings/ranks.csv,
          evals/embeddings/embeddings/<model>_chunks.npy, evals/embeddings/logs/
 """
 import gc
+import hashlib
 import json
 import subprocess
 import threading
@@ -109,6 +110,13 @@ N_LATENCY_QUERIES = 20  # queries timed one at a time (realistic RAG usage)
 COOLDOWN_S = 45  # laptop GPU thermals under sustained 7-8B loads -- bump this if you see throttling
 OUT_DIR = EVALS_DIR / "embeddings"
 OUT_DIR.mkdir(exist_ok=True)
+# Keep the five-paper rerun and its resumable checkpoints separate from the
+# existing full-corpus benchmark artifacts.
+RUN_DIR = EVALS_DIR / "five_papers"
+RUN_DIR.mkdir(exist_ok=True)
+OUT_DIR = RUN_DIR / "embeddings"
+OUT_DIR.mkdir(exist_ok=True)
+PAPER_IDS = {"1706.03762", "2005.11401", "2309.06180", "2310.11511", "2312.10997"}
 
 
 # ----------------------------------------------------------------------------
@@ -167,13 +175,18 @@ def load_data():
             f"values from {CHUNKS_DIR}/*.json."
         )
 
-    chunk_files = sorted(CHUNKS_DIR.glob("*.json"))
+    chunk_files = [CHUNKS_DIR / f"{paper_id}_chunks.json" for paper_id in sorted(PAPER_IDS)]
+    missing_files = [path for path in chunk_files if not path.exists()]
+    if missing_files:
+        raise FileNotFoundError("Missing chunk files for allowlisted papers: " + ", ".join(map(str, missing_files)))
     if not chunk_files:
         raise FileNotFoundError(f"No chunk files found in {CHUNKS_DIR} -- run chunking.py first.")
 
     chunks = []
     for path in chunk_files:
         doc = json.loads(path.read_text(encoding="utf-8"))
+        if doc.get("document_id") not in PAPER_IDS:
+            raise ValueError(f"Chunk file {path} contains a document outside the five-paper allowlist.")
         for c in doc.get("chunks", []):
             chunks.append({
             "id": c["chunk_id"],
@@ -182,10 +195,15 @@ def load_data():
             })
 
     evals = json.loads(EVAL_FILE.read_text(encoding="utf-8"))
+    chunk_ids = [c["id"] for c in chunks]
+    if len(chunk_ids) != len(set(chunk_ids)):
+        raise ValueError("Chunk corpus contains duplicate chunk_id values; fix the chunk IDs before evaluating.")
     id_to_idx = {c["id"]: i for i, c in enumerate(chunks)}
-    evals = [e for e in evals if e["chunk_id"] in id_to_idx]
-    if not evals:
-        raise ValueError("None of evals/embeddings/eval.json's chunk_id values matched a real chunk_id in CHUNKS_DIR -- check for stale ids.")
+    missing_ids = [e["chunk_id"] for e in evals if e["chunk_id"] not in id_to_idx]
+    if missing_ids:
+        raise ValueError(
+            f"eval.json references chunk IDs missing from the current corpus: {missing_ids[:10]}"
+        )
 
     gold_idx = np.array([id_to_idx[e["chunk_id"]] for e in evals])
     papers = np.array([c["paper"] for c in chunks])
@@ -258,8 +276,8 @@ LOADERS = {
 # ----------------------------------------------------------------------------
 def load_cached_result(label, num_chunks, num_evals):
     chunk_cache = OUT_DIR / f"{label}_chunks.npy"
-    results_file = EVALS_DIR / "results.csv"
-    ranks_file = EVALS_DIR / "ranks.csv"
+    results_file = RUN_DIR / "results.csv"
+    ranks_file = RUN_DIR / "ranks.csv"
 
     if not chunk_cache.exists() or not results_file.exists() or not ranks_file.exists():
         return None
@@ -300,6 +318,7 @@ def run_model(cfg, chunks, evals, gold_idx, papers):
     print(f"\n=== {label} ===")
     load_fn, encode_fn = LOADERS[cfg["loader"]]
     chunk_texts = [c["text"] for c in chunks]
+    fingerprint = hashlib.sha256("\n".join(c["id"] + c["text"] for c in chunks).encode()).hexdigest()
     questions = [e["question"] for e in evals]
 
     torch.cuda.empty_cache()
@@ -311,25 +330,58 @@ def run_model(cfg, chunks, evals, gold_idx, papers):
     model = load_fn(cfg)
     sync()
     load_s = time.perf_counter() - t0
+    log_event(f"{label}: model load complete in {load_s:.1f}s")
     vram_loaded_gb = (torch.cuda.memory_allocated() - base_mem) / 1024**3
 
     # ---- warm-up (kernel compilation, cache) so timings are fair
     encode_fn(model, cfg, chunk_texts[:8], cfg["batch_size"], is_query=False)
     sync()
+    log_event(f"{label}: warm-up complete")
     torch.cuda.reset_peak_memory_stats()
 
     # ---- encode all chunks (timed, with temperature sampling)
     sampler = TempSampler()
     sampler.start()
-    t0 = time.perf_counter()
-    chunk_embs = encode_fn(model, cfg, chunk_texts, cfg["batch_size"], is_query=False)
-    sync()
-    encode_s = time.perf_counter() - t0
+    encode_s = 0.0
+    checkpoint = OUT_DIR / f"{label}_resume.npy"
+    checkpoint_meta = OUT_DIR / f"{label}_resume.json"
+    completed = 0
+    chunk_embs = None
+    if checkpoint.exists() and checkpoint_meta.exists():
+        try:
+            meta = json.loads(checkpoint_meta.read_text(encoding="utf-8"))
+            if meta.get("fingerprint") == fingerprint and meta.get("num_chunks") == len(chunks):
+                completed = min(int(meta.get("completed", 0)), len(chunks))
+                encode_s = float(meta.get("encode_seconds", 0.0))
+                chunk_embs = np.load(checkpoint, mmap_mode="r+")
+                if chunk_embs.shape[0] != len(chunks):
+                    completed = 0
+        except Exception:
+            completed = 0
+    log_event(f"{label}: resuming chunk embeddings at {completed}/{len(chunks)}")
+    group_size = max(cfg["batch_size"], cfg["batch_size"] * 16)
+    for start in range(completed, len(chunks), group_size):
+        stop = min(start + group_size, len(chunks))
+        batch_t0 = time.perf_counter()
+        group_embs = np.asarray(encode_fn(model, cfg, chunk_texts[start:stop], cfg["batch_size"], is_query=False))
+        sync()
+        encode_s += time.perf_counter() - batch_t0
+        if chunk_embs is None or completed == 0:
+            chunk_embs = np.lib.format.open_memmap(checkpoint, mode="w+", dtype=group_embs.dtype,
+                                                  shape=(len(chunks), group_embs.shape[1]))
+        chunk_embs[start:stop] = group_embs
+        chunk_embs.flush()
+        checkpoint_meta.write_text(json.dumps({"fingerprint": fingerprint, "num_chunks": len(chunks),
+                                              "completed": stop, "encode_seconds": encode_s}), encoding="utf-8")
+        completed = stop
+        log_event(f"{label}: checkpointed chunks {start + 1}-{stop}/{len(chunks)}")
     peak_temp = sampler.stop()
     vram_peak_gb = torch.cuda.max_memory_allocated() / 1024**3
+    log_event(f"{label}: chunk encoding complete in {encode_s:.1f}s; peak GPU temperature {peak_temp} C")
 
     # ---- query embeddings for scoring (batched)
     query_embs = encode_fn(model, cfg, questions, cfg["batch_size"], is_query=True)
+    log_event(f"{label}: encoded {len(questions)} evaluation questions")
 
     # ---- single-query latency (what a RAG app would experience)
     lat = []
@@ -338,9 +390,11 @@ def run_model(cfg, chunks, evals, gold_idx, papers):
         encode_fn(model, cfg, [q], 1, is_query=True)
         sync()
         lat.append((time.perf_counter() - t0) * 1000)
+    log_event(f"{label}: measured single-question latency for {len(lat)} questions")
 
     # ---- quality
     metrics, ranks = score(np.asarray(chunk_embs), np.asarray(query_embs), gold_idx, papers)
+    log_event(f"{label}: scoring complete")
     np.save(OUT_DIR / f"{label}_chunks.npy", chunk_embs)
 
     row = {
@@ -366,7 +420,7 @@ def run_model(cfg, chunks, evals, gold_idx, papers):
 def main():
     assert torch.cuda.is_available(), "CUDA GPU not found"
     chunks, evals, gold_idx, papers = load_data()
-    print(f"{len(chunks)} chunks, {len(evals)} eval questions")
+    print(f"{len(chunks)} chunks from {len(set(papers))} allowlisted papers, {len(evals)} eval questions")
 
     rows, all_ranks = [], {}
     for cfg in MODELS:
@@ -375,21 +429,24 @@ def main():
             rows.append(row)
             all_ranks[cfg["label"]] = ranks
         except Exception as e:  # e.g. CUDA OOM, or a gated-model auth error: keep going with the other models
-            print(f"!! {cfg['label']} failed: {type(e).__name__}: {e}")
+            log_event(f"!! {cfg['label']} failed: {type(e).__name__}: {e}")
             gc.collect()
             torch.cuda.empty_cache()
-        print(f"Cooling down {COOLDOWN_S}s...")
+        log_event(f"Cooling down for {COOLDOWN_S}s")
         time.sleep(COOLDOWN_S)
+        log_event("Cooldown complete")
 
     df = pd.DataFrame(rows)
-    df.to_csv(EVALS_DIR / "results.csv", index=False)
+    df.to_csv(RUN_DIR / "results.csv", index=False)
+    log_event(f"Wrote results to {RUN_DIR / 'results.csv'}")
     print("\n" + df.to_string(index=False))
 
     # per-question ranks, handy for looking at where models disagree
     rk = pd.DataFrame(all_ranks)
     rk.insert(0, "question", [e["question"] for e in evals])
     rk.insert(1, "gold_chunk", [e["chunk_id"] for e in evals])
-    rk.to_csv(EVALS_DIR / "ranks.csv", index=False)
+    rk.to_csv(RUN_DIR / "ranks.csv", index=False)
+    log_event(f"Wrote ranks to {RUN_DIR / 'ranks.csv'}")
 
     if len(all_ranks) > 1:
         vals = np.array(list(all_ranks.values()))
@@ -414,12 +471,21 @@ if __name__ == "__main__":
             for stream in self.streams:
                 stream.flush()
 
+    def log_event(message):
+        line = f"[{datetime.now().astimezone().isoformat(timespec='seconds')}] {message}"
+        print(line)
+
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     log_path = LOGS_DIR / f"compare_embeddings_{datetime.now():%Y%m%d_%H%M%S}.log"
     with log_path.open("w", encoding="utf-8") as log_file:
         original_stdout, original_stderr = sys.stdout, sys.stderr
         sys.stdout, sys.stderr = Tee(original_stdout, log_file), Tee(original_stderr, log_file)
         try:
+            log_event(f"Run started; five-paper input allowlist: {', '.join(sorted(PAPER_IDS))}")
             main()
+            log_event("Run completed")
+        except BaseException as exc:
+            log_event(f"Run interrupted or failed: {type(exc).__name__}: {exc}")
+            raise
         finally:
             sys.stdout, sys.stderr = original_stdout, original_stderr

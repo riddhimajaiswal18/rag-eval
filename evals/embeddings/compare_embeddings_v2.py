@@ -27,18 +27,12 @@ Inputs:
   CHUNKS_DIR/*.json : output of chunking.py, one file per paper, each with a
                        top-level "chunks" list of {"chunk_id", "document_id",
                        "text", ...}.
-  evals/embeddings/eval_v2.json : [{"question": "...", "gold_chunk_ids": [...], "gold_paper_ids": [...]}, ...]
-                       -- NOT YET CREATED. This still needs to be built before
-                       this script can run; see the note in load_data().
+  evals/embeddings/evals_v2.jsonl : 50 questions with gold chunk/paper IDs and
+                       an explicit list of candidate paper IDs. All chunks in
+                       those 64 paper files are used as retrieval candidates.
 
-cuurently we only test on these papers -
-1706.03762 
-2005.11401 
-2309.06180 
-2310.11511
-2312.10997
-
-this benchmark is only for multi-evidence questions; the corpus is restricted to the papers listed in eval_v2.json
+This benchmark includes multi-chunk and cross-paper evidence questions over
+the complete 64-paper corpus.
 
 future scope - add a pause button to allow the user to pause the script if the GPU is overheating 
 and add time stamps everywhere to track the time taken for each step of the process.
@@ -48,6 +42,7 @@ Outputs: evals/embeddings/results_v2.csv, evals/embeddings/ranks_v2.csv,
          evals/embeddings/embeddings_2/<model>_chunks_v2.npy, evals/embeddings/logs/
 """
 import gc
+import hashlib
 import json
 import subprocess
 import threading
@@ -67,7 +62,7 @@ from transformers import AutoModel, BitsAndBytesConfig
 EVALS_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = EVALS_DIR.parents[1]
 CHUNKS_DIR = PROJECT_DIR / "preprocessing" / "data" / "chunks"
-EVAL_FILE = EVALS_DIR / "eval_v2.json"
+EVAL_FILE = EVALS_DIR / "evals_v2.jsonl"
 LOGS_DIR = EVALS_DIR / "logs"
 
 # ----------------------------------------------------------------------------
@@ -109,6 +104,7 @@ N_LATENCY_QUERIES = 20  # queries timed one at a time (realistic RAG usage)
 COOLDOWN_S = 45  # laptop GPU thermals under sustained 7-8B loads -- bump this if you see throttling
 OUT_DIR = EVALS_DIR / "embeddings_2"
 OUT_DIR.mkdir(exist_ok=True)
+RUN_DIR = EVALS_DIR
 
 
 # ----------------------------------------------------------------------------
@@ -154,36 +150,42 @@ def load_data():
     """
     V2 multi-evidence evaluation.
 
-    Loads only the paper chunk files explicitly referenced by eval_v2.json.
-    This keeps the benchmark corpus restricted to the papers represented in
-    this evaluation set instead of automatically using every chunk file.
+    Loads candidate chunks from every paper listed in evals_v2.jsonl, then validates
+    the gold chunk and paper IDs against that full candidate corpus.
     """
     if not EVAL_FILE.exists():
         raise FileNotFoundError(
-            f"{EVAL_FILE} not found. Create eval_v2.json with "
-            f"question, gold_chunk_ids, and gold_paper_ids."
+            f"{EVAL_FILE} not found. Create evals_v2.jsonl with candidate_paper_ids "
+            f"and questions containing question, gold_chunk_ids, and gold_paper_ids."
         )
 
-    evals = json.loads(EVAL_FILE.read_text(encoding="utf-8"))
-    if not isinstance(evals, list) or not evals:
-        raise ValueError("eval_v2.json must contain a non-empty list.")
+    records = [json.loads(line) for line in EVAL_FILE.read_text(encoding="utf-8").splitlines() if line.strip()]
+    if len(records) < 2 or records[0].get("record_type") != "dataset_metadata":
+        raise ValueError("evals_v2.jsonl must start with dataset metadata, followed by question records.")
+    dataset = records[0]
+    evals = records[1:]
+    target_papers = dataset.get("candidate_paper_ids")
+    if not isinstance(target_papers, list) or not target_papers:
+        raise ValueError("evals_v2.jsonl metadata must contain a non-empty candidate_paper_ids array.")
+    if len(target_papers) != len(set(target_papers)):
+        raise ValueError("candidate_paper_ids contains duplicates.")
+    if len(evals) != 50:
+        raise ValueError(f"evals_v2.jsonl must contain exactly 50 questions; found {len(evals)}.")
 
-    target_papers = sorted({
-        paper_id
-        for e in evals
-        for paper_id in e["gold_paper_ids"]
-    })
+    chunk_files = {path.stem.removesuffix("_chunks"): path for path in CHUNKS_DIR.glob("*_chunks.json")}
+    if set(target_papers) != set(chunk_files):
+        missing = sorted(set(target_papers) - set(chunk_files))
+        unlisted = sorted(set(chunk_files) - set(target_papers))
+        raise ValueError(f"Candidate paper list must match all chunk files. Missing files: {missing}; unlisted files: {unlisted}")
 
     chunks = []
-    missing_files = []
 
     for paper_id in target_papers:
-        path = CHUNKS_DIR / f"{paper_id}_chunks.json"
-        if not path.exists():
-            missing_files.append(str(path))
-            continue
+        path = chunk_files[paper_id]
 
         doc = json.loads(path.read_text(encoding="utf-8"))
+        if doc.get("document_id") != paper_id:
+            raise ValueError(f"Chunk file {path} has document_id {doc.get('document_id')!r}, expected {paper_id!r}.")
         for c in doc.get("chunks", []):
             chunks.append({
                 "id": c["chunk_id"],
@@ -191,23 +193,27 @@ def load_data():
                 "text": c["text"],
             })
 
-    if missing_files:
-        raise FileNotFoundError(
-            "Missing chunk files referenced by eval_v2.json:\n"
-            + "\n".join(missing_files)
+    if not chunks:
+        raise ValueError("No candidate chunks found for the papers listed in evals_v2.jsonl.")
+    expected_chunk_count = dataset.get("candidate_chunk_count")
+    if expected_chunk_count is not None and len(chunks) != expected_chunk_count:
+        raise ValueError(
+            f"Candidate corpus has {len(chunks)} chunks; evals_v2.jsonl expects {expected_chunk_count}."
         )
 
-    if not chunks:
-        raise ValueError("No chunks found for the papers in eval_v2.json.")
-
+    chunk_ids = [c["id"] for c in chunks]
+    if len(chunk_ids) != len(set(chunk_ids)):
+        raise ValueError("Chunk corpus contains duplicate chunk_id values; fix the chunk IDs before evaluating.")
     id_to_idx = {c["id"]: i for i, c in enumerate(chunks)}
 
-    # Do not silently drop malformed/stale questions in V2.
+    # Do not silently drop malformed/stale questions.
     for i, e in enumerate(evals):
+        if not e.get("question") or not e.get("gold_chunk_ids") or not e.get("gold_paper_ids"):
+            raise ValueError(f"evals_v2.jsonl question record {i + 1} needs question, gold_chunk_ids, and gold_paper_ids.")
         missing_ids = [cid for cid in e["gold_chunk_ids"] if cid not in id_to_idx]
         if missing_ids:
             raise ValueError(
-                f"eval_v2.json entry {i} references missing chunk IDs: {missing_ids}"
+                f"evals_v2.jsonl question record {i + 1} references missing chunk IDs: {missing_ids}"
             )
 
         missing_papers = [
@@ -216,7 +222,12 @@ def load_data():
         ]
         if missing_papers:
             raise ValueError(
-                f"eval_v2.json entry {i} has invalid gold_paper_ids: {missing_papers}"
+                f"evals_v2.jsonl question record {i + 1} has invalid gold_paper_ids: {missing_papers}"
+            )
+        actual_papers = {chunks[id_to_idx[cid]]["paper"] for cid in e["gold_chunk_ids"]}
+        if actual_papers != set(e["gold_paper_ids"]):
+            raise ValueError(
+                f"evals_v2.jsonl question record {i + 1} gold_paper_ids do not match the papers of its gold chunks."
             )
 
     gold_indices = [
@@ -324,8 +335,8 @@ LOADERS = {
 # ----------------------------------------------------------------------------
 def load_cached_result(label, num_chunks, num_evals):
     chunk_cache = OUT_DIR / f"{label}_chunks_v2.npy"
-    results_file = EVALS_DIR / "results_v2.csv"
-    ranks_file = EVALS_DIR / "ranks_v2.csv"
+    results_file = RUN_DIR / "results_v2.csv"
+    ranks_file = RUN_DIR / "ranks_v2.csv"
 
     if not chunk_cache.exists() or not results_file.exists() or not ranks_file.exists():
         return None
@@ -366,6 +377,7 @@ def run_model(cfg, chunks, evals, gold_indices, papers):
     print(f"\n=== {label} ===")
     load_fn, encode_fn = LOADERS[cfg["loader"]]
     chunk_texts = [c["text"] for c in chunks]
+    fingerprint = hashlib.sha256("\n".join(c["id"] + c["text"] for c in chunks).encode()).hexdigest()
     questions = [e["question"] for e in evals]
 
     torch.cuda.empty_cache()
@@ -377,25 +389,58 @@ def run_model(cfg, chunks, evals, gold_indices, papers):
     model = load_fn(cfg)
     sync()
     load_s = time.perf_counter() - t0
+    log_event(f"{label}: model load complete in {load_s:.1f}s")
     vram_loaded_gb = (torch.cuda.memory_allocated() - base_mem) / 1024**3
 
     # ---- warm-up (kernel compilation, cache) so timings are fair
     encode_fn(model, cfg, chunk_texts[:8], cfg["batch_size"], is_query=False)
     sync()
+    log_event(f"{label}: warm-up complete")
     torch.cuda.reset_peak_memory_stats()
 
     # ---- encode all chunks (timed, with temperature sampling)
     sampler = TempSampler()
     sampler.start()
-    t0 = time.perf_counter()
-    chunk_embs = encode_fn(model, cfg, chunk_texts, cfg["batch_size"], is_query=False)
-    sync()
-    encode_s = time.perf_counter() - t0
+    encode_s = 0.0
+    checkpoint = OUT_DIR / f"{label}_resume.npy"
+    checkpoint_meta = OUT_DIR / f"{label}_resume.json"
+    completed = 0
+    chunk_embs = None
+    if checkpoint.exists() and checkpoint_meta.exists():
+        try:
+            meta = json.loads(checkpoint_meta.read_text(encoding="utf-8"))
+            if meta.get("fingerprint") == fingerprint and meta.get("num_chunks") == len(chunks):
+                completed = min(int(meta.get("completed", 0)), len(chunks))
+                encode_s = float(meta.get("encode_seconds", 0.0))
+                chunk_embs = np.load(checkpoint, mmap_mode="r+")
+                if chunk_embs.shape[0] != len(chunks):
+                    completed, chunk_embs = 0, None
+        except Exception:
+            completed, chunk_embs = 0, None
+    log_event(f"{label}: resuming chunk embeddings at {completed}/{len(chunks)}")
+    group_size = cfg["batch_size"] * 16
+    for start in range(completed, len(chunks), group_size):
+        stop = min(start + group_size, len(chunks))
+        batch_t0 = time.perf_counter()
+        group_embs = np.asarray(encode_fn(model, cfg, chunk_texts[start:stop], cfg["batch_size"], is_query=False))
+        sync()
+        encode_s += time.perf_counter() - batch_t0
+        if chunk_embs is None or completed == 0:
+            chunk_embs = np.lib.format.open_memmap(checkpoint, mode="w+", dtype=group_embs.dtype,
+                                                  shape=(len(chunks), group_embs.shape[1]))
+        chunk_embs[start:stop] = group_embs
+        chunk_embs.flush()
+        checkpoint_meta.write_text(json.dumps({"fingerprint": fingerprint, "num_chunks": len(chunks),
+                                              "completed": stop, "encode_seconds": encode_s}), encoding="utf-8")
+        completed = stop
+        log_event(f"{label}: checkpointed chunks {start + 1}-{stop}/{len(chunks)}")
     peak_temp = sampler.stop()
     vram_peak_gb = torch.cuda.max_memory_allocated() / 1024**3
+    log_event(f"{label}: chunk encoding complete in {encode_s:.1f}s; peak GPU temperature {peak_temp} C")
 
     # ---- query embeddings for scoring (batched)
     query_embs = encode_fn(model, cfg, questions, cfg["batch_size"], is_query=True)
+    log_event(f"{label}: encoded {len(questions)} evaluation questions")
 
     # ---- single-query latency (what a RAG app would experience)
     lat = []
@@ -404,9 +449,11 @@ def run_model(cfg, chunks, evals, gold_indices, papers):
         encode_fn(model, cfg, [q], 1, is_query=True)
         sync()
         lat.append((time.perf_counter() - t0) * 1000)
+    log_event(f"{label}: measured single-question latency for {len(lat)} questions")
 
     # ---- quality
     metrics, ranks = score(np.asarray(chunk_embs), np.asarray(query_embs), gold_indices, papers)
+    log_event(f"{label}: scoring complete")
     np.save(OUT_DIR / f"{label}_chunks_v2.npy", chunk_embs)
 
     row = {
@@ -432,7 +479,7 @@ def run_model(cfg, chunks, evals, gold_indices, papers):
 def main():
     assert torch.cuda.is_available(), "CUDA GPU not found"
     chunks, evals, gold_indices, papers = load_data()
-    print(f"{len(chunks)} chunks, {len(evals)} eval questions")
+    print(f"{len(chunks)} chunks from {len(set(papers))} candidate papers, {len(evals)} eval questions")
 
     rows, all_ranks = [], {}
     for cfg in MODELS:
@@ -441,19 +488,22 @@ def main():
             rows.append(row)
             all_ranks[cfg["label"]] = ranks
         except Exception as e:  # e.g. CUDA OOM, or a gated-model auth error: keep going with the other models
-            print(f"!! {cfg['label']} failed: {type(e).__name__}: {e}")
+            log_event(f"!! {cfg['label']} failed: {type(e).__name__}: {e}")
             gc.collect()
             torch.cuda.empty_cache()
-        print(f"Cooling down {COOLDOWN_S}s...")
+        log_event(f"Cooling down for {COOLDOWN_S}s")
         time.sleep(COOLDOWN_S)
+        log_event("Cooldown complete")
 
     df = pd.DataFrame(rows)
-    df.to_csv(EVALS_DIR / "results_v2.csv", index=False)
+    df.to_csv(RUN_DIR / "results_v2.csv", index=False)
+    log_event(f"Wrote results to {RUN_DIR / 'results_v2.csv'}")
     print("\n" + df.to_string(index=False))
 
     # per-question ranks, handy for looking at where models disagree
     rk = pd.DataFrame({
     "question": [e["question"] for e in evals],
+    "question_type": [e["question_type"] for e in evals],
     "gold_chunk_ids": [
         json.dumps(e["gold_chunk_ids"]) for e in evals
     ]
@@ -465,12 +515,10 @@ def main():
         for row in ranked
        ]
 
-    rk.to_csv(EVALS_DIR / "ranks_v2.csv", index=False)  
-    rk.insert(0, "question", [e["question"] for e in evals])
-    rk.insert(1, "gold_chunk_ids", [json.dumps(e["gold_chunk_ids"]) for e in evals])
-    rk.to_csv(EVALS_DIR / "ranks_v2.csv", index=False)
+    rk.to_csv(RUN_DIR / "ranks_v2.csv", index=False)
+    log_event(f"Wrote ranks to {RUN_DIR / 'ranks_v2.csv'}")
 
-    print("\nV2 multi-evidence results written to results_v2.csv and ranks_v2.csv")
+    print(f"\nV2 multi-evidence results written to {RUN_DIR / 'results_v2.csv'} and {RUN_DIR / 'ranks_v2.csv'}")
 
 
 if __name__ == "__main__":
@@ -490,12 +538,21 @@ if __name__ == "__main__":
             for stream in self.streams:
                 stream.flush()
 
+    def log_event(message):
+        line = f"[{datetime.now().astimezone().isoformat(timespec='seconds')}] {message}"
+        print(line)
+
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     log_path = LOGS_DIR / f"compare_embeddings_v2_{datetime.now():%Y%m%d_%H%M%S}.log"
     with log_path.open("w", encoding="utf-8") as log_file:
         original_stdout, original_stderr = sys.stdout, sys.stderr
         sys.stdout, sys.stderr = Tee(original_stdout, log_file), Tee(original_stderr, log_file)
         try:
+            log_event("Run started; using the full candidate corpus specified in evals_v2.jsonl")
             main()
+            log_event("Run completed")
+        except BaseException as exc:
+            log_event(f"Run interrupted or failed: {type(exc).__name__}: {exc}")
+            raise
         finally:
             sys.stdout, sys.stderr = original_stdout, original_stderr

@@ -1,0 +1,244 @@
+[2026-10-05T00:57:48+05:30] Run started; using the full candidate corpus specified in evals_v2.jsonl
+2906 chunks from 64 candidate papers, 50 eval questions
+
+=== yuan-0.8B-fp16 ===
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  10%|#         | 31/310 [00:00<00:00, 309.47it/s]Loading weights:  20%|##        | 62/310 [00:00<00:00, 259.96it/s]Loading weights:  29%|##8       | 89/310 [00:00<00:00, 250.62it/s]Loading weights:  37%|###7      | 115/310 [00:00<00:00, 243.74it/s]Loading weights:  45%|####5     | 140/310 [00:00<00:00, 215.49it/s]Loading weights:  52%|#####2    | 162/310 [00:00<00:00, 196.70it/s]Loading weights:  59%|#####9    | 183/310 [00:00<00:00, 195.65it/s]Loading weights:  65%|######5   | 203/310 [00:00<00:00, 186.68it/s]Loading weights:  72%|#######1  | 222/310 [00:01<00:00, 186.71it/s]Loading weights:  79%|#######9  | 246/310 [00:01<00:00, 199.06it/s]Loading weights:  87%|########7 | 271/310 [00:01<00:00, 211.65it/s]Loading weights:  95%|#########4| 293/310 [00:01<00:00, 209.23it/s]Loading weights: 100%|##########| 310/310 [00:01<00:00, 216.64it/s]
+[2026-10-05T00:58:04+05:30] yuan-0.8B-fp16: model load complete in 14.2s
+[2026-10-05T00:58:06+05:30] yuan-0.8B-fp16: warm-up complete
+[2026-10-05T00:58:06+05:30] yuan-0.8B-fp16: resuming chunk embeddings at 0/2906
+[2026-10-05T00:58:21+05:30] yuan-0.8B-fp16: checkpointed chunks 1-256/2906
+[2026-10-05T00:58:37+05:30] yuan-0.8B-fp16: checkpointed chunks 257-512/2906
+[2026-10-05T00:58:52+05:30] yuan-0.8B-fp16: checkpointed chunks 513-768/2906
+[2026-10-05T00:59:07+05:30] yuan-0.8B-fp16: checkpointed chunks 769-1024/2906
+[2026-10-05T00:59:22+05:30] yuan-0.8B-fp16: checkpointed chunks 1025-1280/2906
+[2026-10-05T00:59:37+05:30] yuan-0.8B-fp16: checkpointed chunks 1281-1536/2906
+[2026-10-05T00:59:52+05:30] yuan-0.8B-fp16: checkpointed chunks 1537-1792/2906
+[2026-10-05T01:00:05+05:30] yuan-0.8B-fp16: checkpointed chunks 1793-2048/2906
+[2026-10-05T01:00:18+05:30] yuan-0.8B-fp16: checkpointed chunks 2049-2304/2906
+[2026-10-05T01:00:31+05:30] yuan-0.8B-fp16: checkpointed chunks 2305-2560/2906
+[2026-10-05T01:00:46+05:30] yuan-0.8B-fp16: checkpointed chunks 2561-2816/2906
+[2026-10-05T01:00:51+05:30] yuan-0.8B-fp16: checkpointed chunks 2817-2906/2906
+[2026-10-05T01:00:51+05:30] yuan-0.8B-fp16: chunk encoding complete in 164.8s; peak GPU temperature 72 C
+[2026-10-05T01:00:51+05:30] yuan-0.8B-fp16: encoded 50 evaluation questions
+[2026-10-05T01:00:53+05:30] yuan-0.8B-fp16: measured single-question latency for 20 questions
+[2026-10-05T01:00:54+05:30] yuan-0.8B-fp16: scoring complete
+[2026-10-05T01:00:54+05:30] Cooling down for 45s
+[2026-10-05T01:01:39+05:30] Cooldown complete
+
+=== e5-mistral-7B-4bit ===
+W1005 01:01:43.404000 25268 Lib\site-packages\torch\utils\flop_counter.py:113] triton not found; flop counting will not work for triton kernels
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights:   0%|          | 1/290 [00:00<01:59,  2.41it/s]Loading weights:   1%|1         | 3/290 [00:00<00:50,  5.66it/s]Loading weights:   1%|1         | 4/290 [00:00<00:49,  5.79it/s]Loading weights:   2%|1         | 5/290 [00:00<00:47,  5.96it/s]Loading weights:   3%|3         | 9/290 [00:01<00:21, 13.35it/s]Loading weights:   4%|4         | 12/290 [00:01<00:20, 13.74it/s]Loading weights:   5%|4         | 14/290 [00:01<00:28,  9.79it/s]Loading weights:   7%|6         | 19/290 [00:01<00:16, 16.27it/s]Loading weights:   8%|7         | 22/290 [00:02<00:23, 11.52it/s]Loading weights:   8%|8         | 24/290 [00:02<00:24, 11.00it/s]Loading weights:   9%|9         | 27/290 [00:02<00:19, 13.38it/s]Loading weights:  10%|#         | 30/290 [00:02<00:19, 13.07it/s]Loading weights:  11%|#1        | 32/290 [00:03<00:27,  9.34it/s]Loading weights:  12%|#2        | 36/290 [00:03<00:19, 13.02it/s]Loading weights:  13%|#3        | 39/290 [00:03<00:20, 12.15it/s]Loading weights:  14%|#4        | 41/290 [00:03<00:28,  8.86it/s]Loading weights:  16%|#5        | 45/290 [00:04<00:19, 12.32it/s]Loading weights:  17%|#6        | 48/290 [00:04<00:19, 12.17it/s]Loading weights:  17%|#7        | 50/290 [00:04<00:26,  9.10it/s]Loading weights:  19%|#8        | 54/290 [00:04<00:18, 12.50it/s]Loading weights:  20%|#9        | 57/290 [00:05<00:18, 12.64it/s]Loading weights:  20%|##        | 59/290 [00:05<00:26,  8.84it/s]Loading weights:  22%|##1       | 63/290 [00:05<00:19, 11.90it/s]Loading weights:  23%|##2       | 66/290 [00:06<00:19, 11.72it/s]Loading weights:  23%|##3       | 68/290 [00:06<00:26,  8.36it/s]Loading weights:  25%|##4       | 72/290 [00:06<00:18, 11.62it/s]Loading weights:  26%|##5       | 75/290 [00:06<00:18, 11.83it/s]Loading weights:  27%|##6       | 77/290 [00:07<00:23,  9.09it/s]Loading weights:  28%|##7       | 81/290 [00:07<00:16, 12.60it/s]Loading weights:  29%|##8       | 84/290 [00:07<00:16, 12.53it/s]Loading weights:  30%|##9       | 86/290 [00:08<00:21,  9.60it/s]Loading weights:  31%|###1      | 90/290 [00:08<00:15, 13.33it/s]Loading weights:  32%|###2      | 93/290 [00:08<00:14, 13.30it/s]Loading weights:  33%|###2      | 95/290 [00:08<00:20,  9.74it/s]Loading weights:  34%|###4      | 99/290 [00:08<00:14, 13.34it/s]Loading weights:  35%|###5      | 102/290 [00:09<00:14, 13.36it/s]Loading weights:  36%|###5      | 104/290 [00:09<00:19,  9.30it/s]Loading weights:  37%|###7      | 108/290 [00:09<00:14, 12.75it/s]Loading weights:  38%|###8      | 111/290 [00:09<00:14, 12.57it/s]Loading weights:  39%|###8      | 113/290 [00:10<00:18,  9.48it/s]Loading weights:  40%|####      | 117/290 [00:10<00:13, 12.40it/s]Loading weights:  41%|####1     | 120/290 [00:10<00:13, 12.20it/s]Loading weights:  42%|####2     | 122/290 [00:11<00:18,  9.27it/s]Loading weights:  43%|####3     | 126/290 [00:11<00:13, 12.27it/s]Loading weights:  44%|####4     | 129/290 [00:11<00:13, 11.62it/s]Loading weights:  45%|####5     | 131/290 [00:11<00:17,  9.11it/s]Loading weights:  47%|####6     | 135/290 [00:12<00:12, 12.56it/s]Loading weights:  48%|####7     | 138/290 [00:12<00:12, 12.45it/s]Loading weights:  48%|####8     | 140/290 [00:12<00:16,  9.22it/s]Loading weights:  50%|####9     | 144/290 [00:12<00:11, 12.39it/s]Loading weights:  51%|#####     | 147/290 [00:13<00:11, 12.52it/s]Loading weights:  51%|#####1    | 149/290 [00:13<00:15,  8.96it/s]Loading weights:  53%|#####2    | 153/290 [00:13<00:11, 11.86it/s]Loading weights:  54%|#####3    | 156/290 [00:14<00:11, 11.34it/s]Loading weights:  54%|#####4    | 158/290 [00:14<00:16,  8.06it/s]Loading weights:  56%|#####5    | 162/290 [00:14<00:11, 11.20it/s]Loading weights:  57%|#####6    | 165/290 [00:14<00:10, 11.67it/s]Loading weights:  58%|#####7    | 167/290 [00:15<00:13,  8.97it/s]Loading weights:  59%|#####8    | 171/290 [00:15<00:09, 12.19it/s]Loading weights:  60%|######    | 174/290 [00:15<00:09, 12.38it/s]Loading weights:  61%|######    | 176/290 [00:16<00:12,  9.28it/s]Loading weights:  62%|######2   | 180/290 [00:16<00:08, 12.67it/s]Loading weights:  63%|######3   | 183/290 [00:16<00:09, 11.87it/s]Loading weights:  64%|######3   | 185/290 [00:16<00:11,  9.02it/s]Loading weights:  65%|######5   | 189/290 [00:17<00:08, 11.73it/s]Loading weights:  66%|######6   | 192/290 [00:17<00:08, 11.64it/s]Loading weights:  67%|######6   | 194/290 [00:17<00:10,  8.90it/s]Loading weights:  68%|######8   | 198/290 [00:17<00:07, 12.37it/s]Loading weights:  69%|######9   | 201/290 [00:18<00:07, 12.37it/s]Loading weights:  70%|#######   | 203/290 [00:18<00:10,  8.34it/s]Loading weights:  71%|#######1  | 207/290 [00:18<00:07, 11.41it/s]Loading weights:  72%|#######2  | 210/290 [00:19<00:06, 11.80it/s]Loading weights:  73%|#######3  | 212/290 [00:19<00:08,  9.28it/s]Loading weights:  74%|#######4  | 216/290 [00:19<00:05, 12.83it/s]Loading weights:  76%|#######5  | 219/290 [00:19<00:05, 12.77it/s]Loading weights:  76%|#######6  | 221/290 [00:20<00:07,  9.33it/s]Loading weights:  78%|#######7  | 225/290 [00:20<00:05, 12.96it/s]Loading weights:  79%|#######8  | 228/290 [00:20<00:04, 12.60it/s]Loading weights:  79%|#######9  | 230/290 [00:21<00:06,  9.50it/s]Loading weights:  81%|########  | 234/290 [00:21<00:04, 12.86it/s]Loading weights:  82%|########1 | 237/290 [00:21<00:04, 12.75it/s]Loading weights:  82%|########2 | 239/290 [00:21<00:05,  8.77it/s]Loading weights:  84%|########3 | 243/290 [00:22<00:04, 11.73it/s]Loading weights:  85%|########4 | 246/290 [00:22<00:03, 11.42it/s]Loading weights:  86%|########5 | 248/290 [00:22<00:04,  8.45it/s]Loading weights:  87%|########6 | 252/290 [00:22<00:03, 11.74it/s]Loading weights:  88%|########7 | 255/290 [00:23<00:02, 11.93it/s]Loading weights:  89%|########8 | 257/290 [00:23<00:03,  9.08it/s]Loading weights:  90%|######### | 261/290 [00:23<00:02, 12.63it/s]Loading weights:  91%|#########1| 264/290 [00:23<00:02, 12.50it/s]Loading weights:  92%|#########1| 266/290 [00:24<00:02,  9.25it/s]Loading weights:  93%|#########3| 270/290 [00:24<00:01, 12.61it/s]Loading weights:  94%|#########4| 273/290 [00:24<00:01, 11.50it/s]Loading weights:  95%|#########4| 275/290 [00:25<00:01,  8.91it/s]Loading weights:  96%|#########6| 279/290 [00:25<00:00, 12.39it/s]Loading weights:  97%|#########7| 282/290 [00:25<00:00, 12.49it/s]Loading weights:  98%|#########7| 284/290 [00:25<00:00,  9.45it/s]Loading weights:  99%|#########9| 288/290 [00:26<00:00, 13.00it/s]Loading weights: 100%|##########| 290/290 [00:26<00:00, 11.13it/s]
+[2026-10-05T01:02:24+05:30] e5-mistral-7B-4bit: model load complete in 44.8s
+[2026-10-05T01:02:28+05:30] e5-mistral-7B-4bit: warm-up complete
+[2026-10-05T01:02:28+05:30] e5-mistral-7B-4bit: resuming chunk embeddings at 0/2906
+[2026-10-05T01:02:44+05:30] e5-mistral-7B-4bit: checkpointed chunks 1-32/2906
+[2026-10-05T01:02:59+05:30] e5-mistral-7B-4bit: checkpointed chunks 33-64/2906
+[2026-10-05T01:03:15+05:30] e5-mistral-7B-4bit: checkpointed chunks 65-96/2906
+[2026-10-05T01:03:28+05:30] e5-mistral-7B-4bit: checkpointed chunks 97-128/2906
+[2026-10-05T01:03:42+05:30] e5-mistral-7B-4bit: checkpointed chunks 129-160/2906
+[2026-10-05T01:03:57+05:30] e5-mistral-7B-4bit: checkpointed chunks 161-192/2906
+[2026-10-05T01:04:12+05:30] e5-mistral-7B-4bit: checkpointed chunks 193-224/2906
+[2026-10-05T01:04:28+05:30] e5-mistral-7B-4bit: checkpointed chunks 225-256/2906
+[2026-10-05T01:04:43+05:30] e5-mistral-7B-4bit: checkpointed chunks 257-288/2906
+[2026-10-05T01:04:57+05:30] e5-mistral-7B-4bit: checkpointed chunks 289-320/2906
+[2026-10-05T01:05:11+05:30] e5-mistral-7B-4bit: checkpointed chunks 321-352/2906
+[2026-10-05T01:05:27+05:30] e5-mistral-7B-4bit: checkpointed chunks 353-384/2906
+[2026-10-05T01:05:44+05:30] e5-mistral-7B-4bit: checkpointed chunks 385-416/2906
+[2026-10-05T01:06:02+05:30] e5-mistral-7B-4bit: checkpointed chunks 417-448/2906
+[2026-10-05T01:06:14+05:30] e5-mistral-7B-4bit: checkpointed chunks 449-480/2906
+[2026-10-05T01:06:28+05:30] e5-mistral-7B-4bit: checkpointed chunks 481-512/2906
+[2026-10-05T01:06:45+05:30] e5-mistral-7B-4bit: checkpointed chunks 513-544/2906
+[2026-10-05T01:06:58+05:30] e5-mistral-7B-4bit: checkpointed chunks 545-576/2906
+[2026-10-05T01:07:13+05:30] e5-mistral-7B-4bit: checkpointed chunks 577-608/2906
+[2026-10-05T01:07:27+05:30] e5-mistral-7B-4bit: checkpointed chunks 609-640/2906
+[2026-10-05T01:07:41+05:30] e5-mistral-7B-4bit: checkpointed chunks 641-672/2906
+[2026-10-05T01:07:59+05:30] e5-mistral-7B-4bit: checkpointed chunks 673-704/2906
+[2026-10-05T01:08:12+05:30] e5-mistral-7B-4bit: checkpointed chunks 705-736/2906
+[2026-10-05T01:08:28+05:30] e5-mistral-7B-4bit: checkpointed chunks 737-768/2906
+[2026-10-05T01:08:44+05:30] e5-mistral-7B-4bit: checkpointed chunks 769-800/2906
+[2026-10-05T01:08:58+05:30] e5-mistral-7B-4bit: checkpointed chunks 801-832/2906
+[2026-10-05T01:09:13+05:30] e5-mistral-7B-4bit: checkpointed chunks 833-864/2906
+[2026-10-05T01:09:29+05:30] e5-mistral-7B-4bit: checkpointed chunks 865-896/2906
+[2026-10-05T01:09:42+05:30] e5-mistral-7B-4bit: checkpointed chunks 897-928/2906
+[2026-10-05T01:09:57+05:30] e5-mistral-7B-4bit: checkpointed chunks 929-960/2906
+[2026-10-05T01:10:13+05:30] e5-mistral-7B-4bit: checkpointed chunks 961-992/2906
+[2026-10-05T01:10:27+05:30] e5-mistral-7B-4bit: checkpointed chunks 993-1024/2906
+[2026-10-05T01:10:43+05:30] e5-mistral-7B-4bit: checkpointed chunks 1025-1056/2906
+[2026-10-05T01:10:59+05:30] e5-mistral-7B-4bit: checkpointed chunks 1057-1088/2906
+[2026-10-05T01:11:16+05:30] e5-mistral-7B-4bit: checkpointed chunks 1089-1120/2906
+[2026-10-05T01:11:27+05:30] e5-mistral-7B-4bit: checkpointed chunks 1121-1152/2906
+[2026-10-05T01:11:41+05:30] e5-mistral-7B-4bit: checkpointed chunks 1153-1184/2906
+[2026-10-05T01:11:55+05:30] e5-mistral-7B-4bit: checkpointed chunks 1185-1216/2906
+[2026-10-05T01:12:11+05:30] e5-mistral-7B-4bit: checkpointed chunks 1217-1248/2906
+[2026-10-05T01:12:27+05:30] e5-mistral-7B-4bit: checkpointed chunks 1249-1280/2906
+[2026-10-05T01:12:45+05:30] e5-mistral-7B-4bit: checkpointed chunks 1281-1312/2906
+[2026-10-05T01:13:00+05:30] e5-mistral-7B-4bit: checkpointed chunks 1313-1344/2906
+[2026-10-05T01:13:16+05:30] e5-mistral-7B-4bit: checkpointed chunks 1345-1376/2906
+[2026-10-05T01:13:30+05:30] e5-mistral-7B-4bit: checkpointed chunks 1377-1408/2906
+[2026-10-05T01:13:44+05:30] e5-mistral-7B-4bit: checkpointed chunks 1409-1440/2906
+[2026-10-05T01:13:58+05:30] e5-mistral-7B-4bit: checkpointed chunks 1441-1472/2906
+[2026-10-05T01:14:13+05:30] e5-mistral-7B-4bit: checkpointed chunks 1473-1504/2906
+[2026-10-05T01:14:28+05:30] e5-mistral-7B-4bit: checkpointed chunks 1505-1536/2906
+[2026-10-05T01:14:45+05:30] e5-mistral-7B-4bit: checkpointed chunks 1537-1568/2906
+[2026-10-05T01:15:01+05:30] e5-mistral-7B-4bit: checkpointed chunks 1569-1600/2906
+[2026-10-05T01:17:12+05:30] e5-mistral-7B-4bit: checkpointed chunks 1601-1632/2906
+[2026-10-05T01:17:25+05:30] e5-mistral-7B-4bit: checkpointed chunks 1633-1664/2906
+[2026-10-05T01:17:37+05:30] e5-mistral-7B-4bit: checkpointed chunks 1665-1696/2906
+[2026-10-05T01:17:53+05:30] e5-mistral-7B-4bit: checkpointed chunks 1697-1728/2906
+[2026-10-05T01:18:08+05:30] e5-mistral-7B-4bit: checkpointed chunks 1729-1760/2906
+[2026-10-05T01:18:22+05:30] e5-mistral-7B-4bit: checkpointed chunks 1761-1792/2906
+[2026-10-05T01:18:36+05:30] e5-mistral-7B-4bit: checkpointed chunks 1793-1824/2906
+[2026-10-05T01:18:48+05:30] e5-mistral-7B-4bit: checkpointed chunks 1825-1856/2906
+[2026-10-05T01:19:01+05:30] e5-mistral-7B-4bit: checkpointed chunks 1857-1888/2906
+[2026-10-05T01:19:16+05:30] e5-mistral-7B-4bit: checkpointed chunks 1889-1920/2906
+[2026-10-05T01:19:31+05:30] e5-mistral-7B-4bit: checkpointed chunks 1921-1952/2906
+[2026-10-05T01:19:45+05:30] e5-mistral-7B-4bit: checkpointed chunks 1953-1984/2906
+[2026-10-05T01:20:00+05:30] e5-mistral-7B-4bit: checkpointed chunks 1985-2016/2906
+[2026-10-05T01:20:13+05:30] e5-mistral-7B-4bit: checkpointed chunks 2017-2048/2906
+[2026-10-05T01:20:27+05:30] e5-mistral-7B-4bit: checkpointed chunks 2049-2080/2906
+[2026-10-05T01:20:43+05:30] e5-mistral-7B-4bit: checkpointed chunks 2081-2112/2906
+[2026-10-05T01:20:59+05:30] e5-mistral-7B-4bit: checkpointed chunks 2113-2144/2906
+[2026-10-05T01:21:11+05:30] e5-mistral-7B-4bit: checkpointed chunks 2145-2176/2906
+[2026-10-05T01:21:25+05:30] e5-mistral-7B-4bit: checkpointed chunks 2177-2208/2906
+[2026-10-05T01:21:37+05:30] e5-mistral-7B-4bit: checkpointed chunks 2209-2240/2906
+[2026-10-05T01:21:53+05:30] e5-mistral-7B-4bit: checkpointed chunks 2241-2272/2906
+[2026-10-05T01:22:08+05:30] e5-mistral-7B-4bit: checkpointed chunks 2273-2304/2906
+[2026-10-05T01:22:22+05:30] e5-mistral-7B-4bit: checkpointed chunks 2305-2336/2906
+[2026-10-05T01:22:36+05:30] e5-mistral-7B-4bit: checkpointed chunks 2337-2368/2906
+[2026-10-05T01:22:47+05:30] e5-mistral-7B-4bit: checkpointed chunks 2369-2400/2906
+[2026-10-05T01:23:02+05:30] e5-mistral-7B-4bit: checkpointed chunks 2401-2432/2906
+[2026-10-05T01:23:16+05:30] e5-mistral-7B-4bit: checkpointed chunks 2433-2464/2906
+[2026-10-05T01:23:30+05:30] e5-mistral-7B-4bit: checkpointed chunks 2465-2496/2906
+[2026-10-05T01:23:45+05:30] e5-mistral-7B-4bit: checkpointed chunks 2497-2528/2906
+[2026-10-05T01:23:57+05:30] e5-mistral-7B-4bit: checkpointed chunks 2529-2560/2906
+[2026-10-05T01:24:10+05:30] e5-mistral-7B-4bit: checkpointed chunks 2561-2592/2906
+[2026-10-05T01:24:24+05:30] e5-mistral-7B-4bit: checkpointed chunks 2593-2624/2906
+[2026-10-05T01:24:39+05:30] e5-mistral-7B-4bit: checkpointed chunks 2625-2656/2906
+[2026-10-05T01:24:55+05:30] e5-mistral-7B-4bit: checkpointed chunks 2657-2688/2906
+[2026-10-05T01:25:08+05:30] e5-mistral-7B-4bit: checkpointed chunks 2689-2720/2906
+[2026-10-05T01:25:23+05:30] e5-mistral-7B-4bit: checkpointed chunks 2721-2752/2906
+[2026-10-05T01:25:38+05:30] e5-mistral-7B-4bit: checkpointed chunks 2753-2784/2906
+[2026-10-05T01:25:51+05:30] e5-mistral-7B-4bit: checkpointed chunks 2785-2816/2906
+[2026-10-05T01:26:04+05:30] e5-mistral-7B-4bit: checkpointed chunks 2817-2848/2906
+[2026-10-05T01:26:16+05:30] e5-mistral-7B-4bit: checkpointed chunks 2849-2880/2906
+[2026-10-05T01:26:29+05:30] e5-mistral-7B-4bit: checkpointed chunks 2881-2906/2906
+[2026-10-05T01:26:29+05:30] e5-mistral-7B-4bit: chunk encoding complete in 1440.8s; peak GPU temperature 73 C
+[2026-10-05T01:26:35+05:30] e5-mistral-7B-4bit: encoded 50 evaluation questions
+[2026-10-05T01:26:38+05:30] e5-mistral-7B-4bit: measured single-question latency for 20 questions
+[2026-10-05T01:26:43+05:30] e5-mistral-7B-4bit: scoring complete
+[2026-10-05T01:26:43+05:30] Cooling down for 45s
+[2026-10-05T01:27:28+05:30] Cooldown complete
+
+=== qwen3-8B-4bit ===
+The `tokenizer_kwargs` argument was renamed and is now deprecated. Please use `processor_kwargs` instead.
+Loading weights:   0%|          | 0/398 [00:00<?, ?it/s]Loading weights:   0%|          | 1/398 [00:02<17:31,  2.65s/it]Loading weights:   1%|          | 3/398 [00:02<04:53,  1.35it/s]Loading weights:   1%|1         | 4/398 [00:02<03:30,  1.87it/s]Loading weights:   1%|1         | 5/398 [00:03<02:37,  2.49it/s]Loading weights:   3%|2         | 11/398 [00:03<00:45,  8.46it/s]Loading weights:   4%|3         | 14/398 [00:03<00:36, 10.52it/s]Loading weights:   4%|4         | 17/398 [00:03<00:36, 10.58it/s]Loading weights:   6%|5         | 22/398 [00:03<00:23, 15.77it/s]Loading weights:   6%|6         | 25/398 [00:03<00:23, 16.22it/s]Loading weights:   7%|7         | 28/398 [00:04<00:27, 13.44it/s]Loading weights:   8%|8         | 33/398 [00:04<00:19, 18.26it/s]Loading weights:   9%|9         | 36/398 [00:04<00:20, 18.04it/s]Loading weights:  10%|9         | 39/398 [00:04<00:25, 14.12it/s]Loading weights:  11%|#1        | 44/398 [00:04<00:18, 18.81it/s]Loading weights:  12%|#1        | 47/398 [00:05<00:19, 18.10it/s]Loading weights:  13%|#2        | 50/398 [00:05<00:23, 14.65it/s]Loading weights:  14%|#3        | 55/398 [00:05<00:17, 19.43it/s]Loading weights:  15%|#4        | 58/398 [00:05<00:18, 18.69it/s]Loading weights:  15%|#5        | 61/398 [00:06<00:24, 13.69it/s]Loading weights:  17%|#6        | 66/398 [00:06<00:18, 17.66it/s]Loading weights:  17%|#7        | 69/398 [00:06<00:20, 15.98it/s]Loading weights:  18%|#7        | 71/398 [00:07<00:30, 10.71it/s]Loading weights:  19%|#9        | 77/398 [00:07<00:19, 16.06it/s]Loading weights:  20%|##        | 80/398 [00:07<00:21, 14.90it/s]Loading weights:  21%|##        | 82/398 [00:07<00:29, 10.70it/s]Loading weights:  22%|##2       | 88/398 [00:07<00:18, 16.42it/s]Loading weights:  23%|##2       | 91/398 [00:08<00:19, 15.82it/s]Loading weights:  24%|##3       | 94/398 [00:08<00:23, 13.10it/s]Loading weights:  25%|##4       | 99/398 [00:08<00:16, 17.61it/s]Loading weights:  26%|##5       | 102/398 [00:08<00:17, 16.69it/s]Loading weights:  26%|##6       | 105/398 [00:09<00:21, 13.40it/s]Loading weights:  28%|##7       | 110/398 [00:09<00:15, 18.11it/s]Loading weights:  28%|##8       | 113/398 [00:09<00:16, 17.17it/s]Loading weights:  29%|##9       | 116/398 [00:09<00:21, 13.19it/s]Loading weights:  30%|###       | 121/398 [00:10<00:16, 17.10it/s]Loading weights:  31%|###1      | 124/398 [00:10<00:17, 15.55it/s]Loading weights:  32%|###1      | 126/398 [00:10<00:24, 11.01it/s]Loading weights:  33%|###3      | 132/398 [00:10<00:16, 16.36it/s]Loading weights:  34%|###3      | 135/398 [00:11<00:17, 15.05it/s]Loading weights:  34%|###4      | 137/398 [00:11<00:23, 10.96it/s]Loading weights:  36%|###5      | 143/398 [00:11<00:15, 16.11it/s]Loading weights:  37%|###6      | 146/398 [00:11<00:16, 15.28it/s]Loading weights:  37%|###7      | 148/398 [00:12<00:22, 11.03it/s]Loading weights:  39%|###8      | 154/398 [00:12<00:15, 16.19it/s]Loading weights:  39%|###9      | 157/398 [00:12<00:16, 15.00it/s]Loading weights:  40%|###9      | 159/398 [00:13<00:22, 10.61it/s]Loading weights:  41%|####1     | 165/398 [00:13<00:14, 15.77it/s]Loading weights:  42%|####2     | 168/398 [00:13<00:14, 15.82it/s]Loading weights:  43%|####2     | 171/398 [00:13<00:16, 13.46it/s]Loading weights:  44%|####4     | 176/398 [00:13<00:12, 18.32it/s]Loading weights:  45%|####4     | 179/398 [00:14<00:12, 17.69it/s]Loading weights:  46%|####5     | 182/398 [00:14<00:14, 14.51it/s]Loading weights:  47%|####6     | 187/398 [00:14<00:10, 19.20it/s]Loading weights:  48%|####7     | 190/398 [00:14<00:11, 17.80it/s]Loading weights:  48%|####8     | 193/398 [00:15<00:14, 14.21it/s]Loading weights:  50%|####9     | 198/398 [00:15<00:10, 18.35it/s]Loading weights:  51%|#####     | 201/398 [00:15<00:12, 16.28it/s]Loading weights:  51%|#####1    | 203/398 [00:15<00:17, 10.94it/s]Loading weights:  53%|#####2    | 209/398 [00:16<00:11, 16.27it/s]Loading weights:  53%|#####3    | 212/398 [00:16<00:12, 14.89it/s]Loading weights:  54%|#####3    | 214/398 [00:16<00:17, 10.75it/s]Loading weights:  55%|#####5    | 220/398 [00:16<00:11, 15.73it/s]Loading weights:  56%|#####6    | 223/398 [00:17<00:12, 14.42it/s]Loading weights:  57%|#####6    | 225/398 [00:17<00:16, 10.42it/s]Loading weights:  58%|#####8    | 231/398 [00:17<00:10, 15.44it/s]Loading weights:  59%|#####8    | 234/398 [00:17<00:10, 15.18it/s]Loading weights:  59%|#####9    | 236/398 [00:18<00:13, 11.84it/s]Loading weights:  61%|######    | 242/398 [00:18<00:08, 17.96it/s]Loading weights:  62%|######1   | 245/398 [00:18<00:08, 17.01it/s]Loading weights:  62%|######2   | 248/398 [00:18<00:10, 14.16it/s]Loading weights:  64%|######3   | 253/398 [00:18<00:07, 18.81it/s]Loading weights:  64%|######4   | 256/398 [00:19<00:08, 17.71it/s]Loading weights:  65%|######5   | 259/398 [00:19<00:10, 13.36it/s]Loading weights:  66%|######6   | 264/398 [00:19<00:07, 17.54it/s]Loading weights:  67%|######7   | 267/398 [00:19<00:07, 17.13it/s]Loading weights:  68%|######7   | 270/398 [00:20<00:09, 14.04it/s]Loading weights:  69%|######9   | 275/398 [00:20<00:06, 18.88it/s]Loading weights:  70%|######9   | 278/398 [00:20<00:06, 17.90it/s]Loading weights:  71%|#######   | 281/398 [00:20<00:08, 14.50it/s]Loading weights:  72%|#######1  | 286/398 [00:20<00:05, 19.20it/s]Loading weights:  73%|#######2  | 289/398 [00:21<00:06, 18.04it/s]Loading weights:  73%|#######3  | 292/398 [00:21<00:07, 14.49it/s]Loading weights:  75%|#######4  | 297/398 [00:21<00:05, 19.08it/s]Loading weights:  75%|#######5  | 300/398 [00:21<00:05, 17.04it/s]Loading weights:  76%|#######6  | 303/398 [00:22<00:07, 12.49it/s]Loading weights:  77%|#######7  | 308/398 [00:22<00:05, 16.35it/s]Loading weights:  78%|#######8  | 311/398 [00:22<00:05, 15.13it/s]Loading weights:  79%|#######8  | 313/398 [00:23<00:07, 10.73it/s]Loading weights:  80%|########  | 319/398 [00:23<00:04, 16.49it/s]Loading weights:  81%|########  | 322/398 [00:23<00:04, 15.81it/s]Loading weights:  82%|########1 | 325/398 [00:23<00:05, 12.77it/s]Loading weights:  83%|########2 | 330/398 [00:23<00:03, 17.15it/s]Loading weights:  84%|########3 | 333/398 [00:24<00:03, 16.53it/s]Loading weights:  84%|########4 | 336/398 [00:24<00:04, 13.49it/s]Loading weights:  86%|########5 | 341/398 [00:24<00:03, 18.15it/s]Loading weights:  86%|########6 | 344/398 [00:24<00:03, 17.17it/s]Loading weights:  87%|########7 | 347/398 [00:25<00:04, 12.54it/s]Loading weights:  88%|########8 | 352/398 [00:25<00:02, 16.85it/s]Loading weights:  89%|########9 | 355/398 [00:25<00:02, 16.19it/s]Loading weights:  90%|########9 | 358/398 [00:25<00:03, 13.00it/s]Loading weights:  91%|#########1| 363/398 [00:26<00:01, 17.89it/s]Loading weights:  92%|#########1| 366/398 [00:26<00:01, 16.61it/s]Loading weights:  93%|#########2| 369/398 [00:26<00:02, 13.68it/s]Loading weights:  94%|#########3| 374/398 [00:26<00:01, 18.46it/s]Loading weights:  95%|#########4| 377/398 [00:26<00:01, 17.09it/s]Loading weights:  95%|#########5| 380/398 [00:27<00:01, 13.30it/s]Loading weights:  97%|#########6| 385/398 [00:27<00:00, 17.93it/s]Loading weights:  97%|#########7| 388/398 [00:27<00:00, 16.81it/s]Loading weights:  98%|#########8| 391/398 [00:27<00:00, 13.73it/s]Loading weights:  99%|#########9| 396/398 [00:28<00:00, 18.35it/s]Loading weights: 100%|##########| 398/398 [00:28<00:00, 14.18it/s]
+[2026-10-05T01:28:06+05:30] qwen3-8B-4bit: model load complete in 37.4s
+[2026-10-05T01:28:10+05:30] qwen3-8B-4bit: warm-up complete
+[2026-10-05T01:28:10+05:30] qwen3-8B-4bit: resuming chunk embeddings at 0/2906
+[2026-10-05T01:46:52+05:30] qwen3-8B-4bit: checkpointed chunks 1-32/2906
+[2026-10-05T01:47:11+05:30] qwen3-8B-4bit: checkpointed chunks 33-64/2906
+[2026-10-05T01:47:30+05:30] qwen3-8B-4bit: checkpointed chunks 65-96/2906
+[2026-10-05T01:47:46+05:30] qwen3-8B-4bit: checkpointed chunks 97-128/2906
+[2026-10-05T01:48:05+05:30] qwen3-8B-4bit: checkpointed chunks 129-160/2906
+[2026-10-05T01:48:23+05:30] qwen3-8B-4bit: checkpointed chunks 161-192/2906
+[2026-10-05T01:48:44+05:30] qwen3-8B-4bit: checkpointed chunks 193-224/2906
+[2026-10-05T01:49:05+05:30] qwen3-8B-4bit: checkpointed chunks 225-256/2906
+[2026-10-05T01:49:24+05:30] qwen3-8B-4bit: checkpointed chunks 257-288/2906
+[2026-10-05T01:49:43+05:30] qwen3-8B-4bit: checkpointed chunks 289-320/2906
+[2026-10-05T01:50:01+05:30] qwen3-8B-4bit: checkpointed chunks 321-352/2906
+[2026-10-05T01:50:23+05:30] qwen3-8B-4bit: checkpointed chunks 353-384/2906
+[2026-10-05T01:50:45+05:30] qwen3-8B-4bit: checkpointed chunks 385-416/2906
+[2026-10-05T01:51:10+05:30] qwen3-8B-4bit: checkpointed chunks 417-448/2906
+[2026-10-05T01:51:27+05:30] qwen3-8B-4bit: checkpointed chunks 449-480/2906
+[2026-10-05T01:51:45+05:30] qwen3-8B-4bit: checkpointed chunks 481-512/2906
+[2026-10-05T01:52:07+05:30] qwen3-8B-4bit: checkpointed chunks 513-544/2906
+[2026-10-05T01:52:26+05:30] qwen3-8B-4bit: checkpointed chunks 545-576/2906
+[2026-10-05T01:52:44+05:30] qwen3-8B-4bit: checkpointed chunks 577-608/2906
+[2026-10-05T01:53:03+05:30] qwen3-8B-4bit: checkpointed chunks 609-640/2906
+[2026-10-05T01:53:21+05:30] qwen3-8B-4bit: checkpointed chunks 641-672/2906
+[2026-10-05T01:53:44+05:30] qwen3-8B-4bit: checkpointed chunks 673-704/2906
+[2026-10-05T01:54:04+05:30] qwen3-8B-4bit: checkpointed chunks 705-736/2906
+[2026-10-05T01:54:26+05:30] qwen3-8B-4bit: checkpointed chunks 737-768/2906
+[2026-10-05T01:54:48+05:30] qwen3-8B-4bit: checkpointed chunks 769-800/2906
+[2026-10-05T01:55:02+05:30] qwen3-8B-4bit: checkpointed chunks 801-832/2906
+[2026-10-05T01:55:19+05:30] qwen3-8B-4bit: checkpointed chunks 833-864/2906
+[2026-10-05T01:55:34+05:30] qwen3-8B-4bit: checkpointed chunks 865-896/2906
+[2026-10-05T01:55:47+05:30] qwen3-8B-4bit: checkpointed chunks 897-928/2906
+[2026-10-05T01:56:03+05:30] qwen3-8B-4bit: checkpointed chunks 929-960/2906
+[2026-10-05T01:56:20+05:30] qwen3-8B-4bit: checkpointed chunks 961-992/2906
+[2026-10-05T01:56:35+05:30] qwen3-8B-4bit: checkpointed chunks 993-1024/2906
+[2026-10-05T01:56:52+05:30] qwen3-8B-4bit: checkpointed chunks 1025-1056/2906
+[2026-10-05T01:57:08+05:30] qwen3-8B-4bit: checkpointed chunks 1057-1088/2906
+[2026-10-05T01:57:26+05:30] qwen3-8B-4bit: checkpointed chunks 1089-1120/2906
+[2026-10-05T01:57:37+05:30] qwen3-8B-4bit: checkpointed chunks 1121-1152/2906
+[2026-10-05T01:57:52+05:30] qwen3-8B-4bit: checkpointed chunks 1153-1184/2906
+[2026-10-05T01:58:07+05:30] qwen3-8B-4bit: checkpointed chunks 1185-1216/2906
+[2026-10-05T01:58:23+05:30] qwen3-8B-4bit: checkpointed chunks 1217-1248/2906
+[2026-10-05T01:58:39+05:30] qwen3-8B-4bit: checkpointed chunks 1249-1280/2906
+[2026-10-05T01:59:00+05:30] qwen3-8B-4bit: checkpointed chunks 1281-1312/2906
+[2026-10-05T01:59:15+05:30] qwen3-8B-4bit: checkpointed chunks 1313-1344/2906
+[2026-10-05T01:59:30+05:30] qwen3-8B-4bit: checkpointed chunks 1345-1376/2906
+[2026-10-05T01:59:44+05:30] qwen3-8B-4bit: checkpointed chunks 1377-1408/2906
+[2026-10-05T01:59:58+05:30] qwen3-8B-4bit: checkpointed chunks 1409-1440/2906
+[2026-10-05T02:00:13+05:30] qwen3-8B-4bit: checkpointed chunks 1441-1472/2906
+[2026-10-05T02:00:28+05:30] qwen3-8B-4bit: checkpointed chunks 1473-1504/2906
+[2026-10-05T02:00:44+05:30] qwen3-8B-4bit: checkpointed chunks 1505-1536/2906
+[2026-10-05T02:01:03+05:30] qwen3-8B-4bit: checkpointed chunks 1537-1568/2906
+[2026-10-05T02:01:18+05:30] qwen3-8B-4bit: checkpointed chunks 1569-1600/2906
+[2026-10-05T02:01:34+05:30] qwen3-8B-4bit: checkpointed chunks 1601-1632/2906
+[2026-10-05T02:01:47+05:30] qwen3-8B-4bit: checkpointed chunks 1633-1664/2906
+[2026-10-05T02:02:00+05:30] qwen3-8B-4bit: checkpointed chunks 1665-1696/2906
+[2026-10-05T02:02:17+05:30] qwen3-8B-4bit: checkpointed chunks 1697-1728/2906
+[2026-10-05T02:02:33+05:30] qwen3-8B-4bit: checkpointed chunks 1729-1760/2906
+[2026-10-05T02:02:47+05:30] qwen3-8B-4bit: checkpointed chunks 1761-1792/2906
+[2026-10-05T02:03:01+05:30] qwen3-8B-4bit: checkpointed chunks 1793-1824/2906
+[2026-10-05T02:03:13+05:30] qwen3-8B-4bit: checkpointed chunks 1825-1856/2906
+[2026-10-05T02:03:27+05:30] qwen3-8B-4bit: checkpointed chunks 1857-1888/2906
+[2026-10-05T02:03:43+05:30] qwen3-8B-4bit: checkpointed chunks 1889-1920/2906
+[2026-10-05T02:03:58+05:30] qwen3-8B-4bit: checkpointed chunks 1921-1952/2906
+[2026-10-05T02:04:12+05:30] qwen3-8B-4bit: checkpointed chunks 1953-1984/2906
+[2026-10-05T02:04:28+05:30] qwen3-8B-4bit: checkpointed chunks 1985-2016/2906
+[2026-10-05T02:04:41+05:30] qwen3-8B-4bit: checkpointed chunks 2017-2048/2906
+[2026-10-05T02:04:57+05:30] qwen3-8B-4bit: checkpointed chunks 2049-2080/2906
+[2026-10-05T02:05:13+05:30] qwen3-8B-4bit: checkpointed chunks 2081-2112/2906
+[2026-10-05T02:05:28+05:30] qwen3-8B-4bit: checkpointed chunks 2113-2144/2906
+[2026-10-05T02:05:42+05:30] qwen3-8B-4bit: checkpointed chunks 2145-2176/2906
+[2026-10-05T02:05:56+05:30] qwen3-8B-4bit: checkpointed chunks 2177-2208/2906
+[2026-10-05T02:06:08+05:30] qwen3-8B-4bit: checkpointed chunks 2209-2240/2906
+[2026-10-05T02:06:24+05:30] qwen3-8B-4bit: checkpointed chunks 2241-2272/2906
+[2026-10-05T02:06:40+05:30] qwen3-8B-4bit: checkpointed chunks 2273-2304/2906
+[2026-10-05T02:06:54+05:30] qwen3-8B-4bit: checkpointed chunks 2305-2336/2906
+[2026-10-05T02:07:09+05:30] qwen3-8B-4bit: checkpointed chunks 2337-2368/2906
+[2026-10-05T02:07:20+05:30] qwen3-8B-4bit: checkpointed chunks 2369-2400/2906
+[2026-10-05T02:07:35+05:30] qwen3-8B-4bit: checkpointed chunks 2401-2432/2906
+[2026-10-05T02:07:49+05:30] qwen3-8B-4bit: checkpointed chunks 2433-2464/2906
+[2026-10-05T02:08:04+05:30] qwen3-8B-4bit: checkpointed chunks 2465-2496/2906
+[2026-10-05T02:08:20+05:30] qwen3-8B-4bit: checkpointed chunks 2497-2528/2906
+[2026-10-05T02:08:32+05:30] qwen3-8B-4bit: checkpointed chunks 2529-2560/2906
+[2026-10-05T02:08:46+05:30] qwen3-8B-4bit: checkpointed chunks 2561-2592/2906
+[2026-10-05T02:09:01+05:30] qwen3-8B-4bit: checkpointed chunks 2593-2624/2906
+[2026-10-05T02:09:16+05:30] qwen3-8B-4bit: checkpointed chunks 2625-2656/2906
+[2026-10-05T02:09:31+05:30] qwen3-8B-4bit: checkpointed chunks 2657-2688/2906
+[2026-10-05T02:09:46+05:30] qwen3-8B-4bit: checkpointed chunks 2689-2720/2906
+[2026-10-05T02:10:01+05:30] qwen3-8B-4bit: checkpointed chunks 2721-2752/2906
+[2026-10-05T02:10:16+05:30] qwen3-8B-4bit: checkpointed chunks 2753-2784/2906
+[2026-10-05T02:10:30+05:30] qwen3-8B-4bit: checkpointed chunks 2785-2816/2906
+[2026-10-05T02:10:44+05:30] qwen3-8B-4bit: checkpointed chunks 2817-2848/2906
+[2026-10-05T02:10:56+05:30] qwen3-8B-4bit: checkpointed chunks 2849-2880/2906
+[2026-10-05T02:11:09+05:30] qwen3-8B-4bit: checkpointed chunks 2881-2906/2906
+[2026-10-05T02:11:09+05:30] qwen3-8B-4bit: chunk encoding complete in 2578.4s; peak GPU temperature 74 C
+[2026-10-05T02:11:15+05:30] qwen3-8B-4bit: encoded 50 evaluation questions
+[2026-10-05T02:11:19+05:30] qwen3-8B-4bit: measured single-question latency for 20 questions
+[2026-10-05T02:11:19+05:30] qwen3-8B-4bit: scoring complete
+[2026-10-05T02:11:19+05:30] Cooling down for 45s
+[2026-10-05T02:12:04+05:30] Cooldown complete
+[2026-10-05T02:12:04+05:30] Wrote results to C:\Users\User\OneDrive\Desktop\RagAndEval\evals\embeddings\results_v2.csv
+
+             model  dim  evidence_recall@1  evidence_precision@1  evidence_coverage@1  paper_coverage@1  evidence_recall@5  evidence_precision@5  evidence_coverage@5  paper_coverage@5  evidence_recall@10  evidence_precision@10  evidence_coverage@10  paper_coverage@10  chunks/s  encode_total_s  query_ms(median)  load_s  vram_loaded_GB  vram_peak_GB  peak_gpu_temp_C
+    yuan-0.8B-fp16 1024              0.143                  0.30                0.143              0.59              0.363                 0.152                0.363              0.85               0.490                  0.102                 0.490               0.89      17.6           164.8              82.1    14.2            1.11          1.35               72
+e5-mistral-7B-4bit 4096              0.077                  0.16                0.077              0.44              0.190                 0.080                0.190              0.70               0.270                  0.056                 0.270               0.84       2.0          1440.8             155.4    44.8            3.93          4.14               73
+     qwen3-8B-4bit 4096              0.210                  0.44                0.210              0.75              0.530                 0.224                0.530              0.90               0.687                  0.144                 0.687               0.94       1.1          2578.4             181.6    37.4            4.81          5.15               74
+[2026-10-05T02:12:04+05:30] Wrote ranks to C:\Users\User\OneDrive\Desktop\RagAndEval\evals\embeddings\ranks_v2.csv
+
+V2 multi-evidence results written to C:\Users\User\OneDrive\Desktop\RagAndEval\evals\embeddings\results_v2.csv and C:\Users\User\OneDrive\Desktop\RagAndEval\evals\embeddings\ranks_v2.csv
+[2026-10-05T02:12:04+05:30] Run completed

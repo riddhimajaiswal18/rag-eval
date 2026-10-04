@@ -27,6 +27,12 @@ dependencies = [
 
     # RAG evaluation
     "deepeval>=3.0.0",
+
+    # Vector database
+    "qdrant-client>=1.15.0",
+
+    # Environment configuration
+    "python-dotenv>=1.0.0",
 ]
 
 [tool.uv]

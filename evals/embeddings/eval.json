@@ -1,41 +1,142 @@
 [
-  {"question":"In the Transformer decoder, what prevents a position from using target tokens that come later in the output?","chunk_id":"1706.03762::encoder-and-decoder-stacks::c000"},
-  {"question":"Why use several attention heads with separate learned projections instead of one full-width attention operation?","chunk_id":"1706.03762::multi-head-attention::c000"},
-  {"question":"How does the original Transformer inject token order into its inputs, and why did the authors prefer that encoding over learned position vectors?","chunk_id":"1706.03762::positional-encoding::c000"},
-  {"question":"What three properties did the authors use to compare self-attention with recurrent and convolutional layers?","chunk_id":"1706.03762::why-self-attention::c000"},
-  {"question":"What training data and batch token budget did the Transformer use for its English-to-French experiments?","chunk_id":"1706.03762::training-data-and-batching::c000"},
-  {"question":"On what hardware and for how long were the base and big Transformer models trained?","chunk_id":"1706.03762::hardware-and-schedule::c000"},
-  {"question":"What BLEU scores did the big Transformer reach on the WMT 2014 English-to-German and English-to-French tasks?","chunk_id":"1706.03762::machine-translation::c000"},
-
-  {"question":"In RAG-Sequence, how are the retrieved passages used across the tokens of a generated answer?","chunk_id":"2005.11401::rag-sequence-model::c000"},
-  {"question":"How does RAG-Token differ from RAG-Sequence in its use of retrieved documents while generating an answer?","chunk_id":"2005.11401::rag-token-model::c000"},
-  {"question":"How does the RAG paper represent queries and passages for retrieval, and what search problem is used to find top passages?","chunk_id":"2005.11401::retriever-dpr::c000"},
-  {"question":"Which generator did the RAG authors use, and how did it receive the retrieved passage along with the input?","chunk_id":"2005.11401::generator-bart::c000"},
-  {"question":"During RAG fine-tuning, which retriever component stayed fixed and which components were updated?","chunk_id":"2005.11401::training::c000"},
-  {"question":"How did the paper demonstrate that RAG can update world knowledge without retraining the language model?","chunk_id":"2005.11401::index-hot-swapping::c000"},
-  {"question":"What happened when the RAG retriever was frozen or replaced by BM25, and on which task did BM25 do best?","chunk_id":"2005.11401::retrieval-ablations::c000"},
-
-  {"question":"How does PagedAttention organize a sequence's key/value cache to avoid requiring contiguous GPU memory?","chunk_id":"2309.06180::pagedattention::c000"},
-  {"question":"What operating-system memory idea inspired vLLM's KV cache manager, and how does vLLM apply it?","chunk_id":"2309.06180::kv-cache-manager::c000"},
-  {"question":"When vLLM must preempt requests under memory pressure, how does its scheduling policy choose which requests to keep or preempt?","chunk_id":"2309.06180::scheduling-and-preemption::c000"},
-  {"question":"How does vLLM save KV-cache memory when one prompt produces several sampled continuations?","chunk_id":"2309.06180::parallel-sampling::c000"},
-  {"question":"How can an LLM service avoid recomputing a repeated system prompt prefix for every request in vLLM?","chunk_id":"2309.06180::shared-prefix::c000"},
-  {"question":"In vLLM's tensor-parallel setup, how do GPU workers coordinate access to KV-cache blocks during decoding?","chunk_id":"2309.06180::distributed-execution::c000"},
-  {"question":"Which GPU-kernel optimizations does vLLM use to reduce overhead when writing, reading, and copying paged KV blocks?","chunk_id":"2309.06180::kernel-level-optimization::c000"},
-
-  {"question":"What problem does SELF-RAG address with fixed, unconditional passage retrieval, and what does it add to a language model?","chunk_id":"2310.11511::abstract::c000"},
-  {"question":"What are the four SELF-RAG reflection signals used to decide on retrieval and judge passages or responses?","chunk_id":"2310.11511::problem-formalization-and-overview::c001"},
-  {"question":"How are training examples for the SELF-RAG generator augmented with retrieval and critique signals?","chunk_id":"2310.11511::training-the-generator-model::c000"},
-  {"question":"How does SELF-RAG decide whether to retrieve during inference, and what alternative threshold control does the paper describe?","chunk_id":"2310.11511::self-rag-inference::c000"},
-  {"question":"How can SELF-RAG's inference-time scoring favor evidence-supported output, and how can decoding reject unsupported continuations outright?","chunk_id":"2310.11511::self-rag-inference::c001"},
-  {"question":"On which long-form task did SELF-RAG show stronger citation precision and recall than most compared models?","chunk_id":"2310.11511::main-results::c001"},
-  {"question":"What did human evaluators assess in SELF-RAG's outputs, and how did they judge the reflection-token predictions?","chunk_id":"2310.11511::human-evaluations::c000"},
-
-  {"question":"What trade-offs do larger versus smaller fixed-size chunks create for retrieval, according to the RAG survey?","chunk_id":"2312.10997::1-chunking-strategy::c000"},
-  {"question":"Why can relying directly on the user's original query hurt retrieval, and what query issue does the survey illustrate with 'LLM'?","chunk_id":"2312.10997::c-query-optimization::c000"},
-  {"question":"Which metrics does the survey identify for assessing retrieval quality, and what aspects matter for generated answers?","chunk_id":"2312.10997::b-evaluation-target::c000"},
-  {"question":"How does the survey distinguish context relevance, answer faithfulness, and answer relevance in RAG evaluation?","chunk_id":"2312.10997::c-evaluation-aspects::c000"},
-  {"question":"What happens during iterative retrieval in RAG, and what drawback does the survey say can arise from repeating it?","chunk_id":"2312.10997::a-iterative-retrieval::c000"},
-  {"question":"Why does the survey argue RAG can remain useful when language models accept very long contexts?","chunk_id":"2312.10997::a-rag-vs-long-context::c000"},
-  {"question":"Which examples does the survey give of retrieval-augmented systems working with images, audio or video, and code?","chunk_id":"2312.10997::f-multi-modal-rag::c000"}
+  {
+    "question": "In the Transformer decoder, what prevents a position from using target tokens that come later in the output?",
+    "chunk_id": "1706.03762::s004::encoder-and-decoder-stacks::c000"
+  },
+  {
+    "question": "Why use several attention heads with separate learned projections instead of one full-width attention operation?",
+    "chunk_id": "1706.03762::s007::multi-head-attention::c000"
+  },
+  {
+    "question": "How does the original Transformer inject token order into its inputs, and why did the authors prefer that encoding over learned position vectors?",
+    "chunk_id": "1706.03762::s011::positional-encoding::c000"
+  },
+  {
+    "question": "What three properties did the authors use to compare self-attention with recurrent and convolutional layers?",
+    "chunk_id": "1706.03762::s012::why-self-attention::c000"
+  },
+  {
+    "question": "What training data and batch token budget did the Transformer use for its English-to-French experiments?",
+    "chunk_id": "1706.03762::s014::training-data-and-batching::c000"
+  },
+  {
+    "question": "On what hardware and for how long were the base and big Transformer models trained?",
+    "chunk_id": "1706.03762::s015::hardware-and-schedule::c000"
+  },
+  {
+    "question": "What BLEU scores did the big Transformer reach on the WMT 2014 English-to-German and English-to-French tasks?",
+    "chunk_id": "1706.03762::s019::machine-translation::c000"
+  },
+  {
+    "question": "In RAG-Sequence, how are the retrieved passages used across the tokens of a generated answer?",
+    "chunk_id": "2005.11401::s002::rag-sequence-model::c000"
+  },
+  {
+    "question": "How does RAG-Token differ from RAG-Sequence in its use of retrieved documents while generating an answer?",
+    "chunk_id": "2005.11401::s007::rag-token::c000"
+  },
+  {
+    "question": "How does the RAG paper represent queries and passages for retrieval, and what search problem is used to find top passages?",
+    "chunk_id": "2005.11401::s003::retriever-dpr::c000"
+  },
+  {
+    "question": "Which generator did the RAG authors use, and how did it receive the retrieved passage along with the input?",
+    "chunk_id": "2005.11401::s004::generator-bart::c000"
+  },
+  {
+    "question": "During RAG fine-tuning, which retriever component stayed fixed and which components were updated?",
+    "chunk_id": "2005.11401::s005::training::c000"
+  },
+  {
+    "question": "How did the paper demonstrate that RAG can update world knowledge without retraining the language model?",
+    "chunk_id": "2005.11401::s017::additional-results::c001"
+  },
+  {
+    "question": "What happened when the RAG retriever was frozen or replaced by BM25, and on which task did BM25 do best?",
+    "chunk_id": "2005.11401::s017::additional-results::c000"
+  },
+  {
+    "question": "How does PagedAttention organize a sequence's key/value cache to avoid requiring contiguous GPU memory?",
+    "chunk_id": "2309.06180::s009::pagedattention::c000"
+  },
+  {
+    "question": "What operating-system memory idea inspired vLLM's KV cache manager, and how does vLLM apply it?",
+    "chunk_id": "2309.06180::s010::kv-cache-manager::c000"
+  },
+  {
+    "question": "When vLLM must preempt requests under memory pressure, how does its scheduling policy choose which requests to keep or preempt?",
+    "chunk_id": "2309.06180::s013::scheduling-and-preemption::c000"
+  },
+  {
+    "question": "How does vLLM save KV-cache memory when one prompt produces several sampled continuations?",
+    "chunk_id": "2309.06180::s012::application-to-other-decoding-scenarios::c000"
+  },
+  {
+    "question": "How can an LLM service avoid recomputing a repeated system prompt prefix for every request in vLLM?",
+    "chunk_id": "2309.06180::s012::application-to-other-decoding-scenarios::c004"
+  },
+  {
+    "question": "In vLLM's tensor-parallel setup, how do GPU workers coordinate access to KV-cache blocks during decoding?",
+    "chunk_id": "2309.06180::s014::distributed-execution::c000"
+  },
+  {
+    "question": "Which GPU-kernel optimizations does vLLM use to reduce overhead when writing, reading, and copying paged KV blocks?",
+    "chunk_id": "2309.06180::s016::kernel-level-optimization::c000"
+  },
+  {
+    "question": "What problem does SELF-RAG address with fixed, unconditional passage retrieval, and what does it add to a language model?",
+    "chunk_id": "2310.11511::s000::abstract::c000"
+  },
+  {
+    "question": "What are the four SELF-RAG reflection signals used to decide on retrieval and judge passages or responses?",
+    "chunk_id": "2310.11511::s005::problem-formalization-and-overview::c001"
+  },
+  {
+    "question": "How are training examples for the SELF-RAG generator augmented with retrieval and critique signals?",
+    "chunk_id": "2310.11511::s009::training-the-generator-model::c000"
+  },
+  {
+    "question": "How does SELF-RAG decide whether to retrieve during inference, and what alternative threshold control does the paper describe?",
+    "chunk_id": "2310.11511::s010::self-rag-inference::c000"
+  },
+  {
+    "question": "How can SELF-RAG's inference-time scoring favor evidence-supported output, and how can decoding reject unsupported continuations outright?",
+    "chunk_id": "2310.11511::s010::self-rag-inference::c001"
+  },
+  {
+    "question": "On which long-form task did SELF-RAG show stronger citation precision and recall than most compared models?",
+    "chunk_id": "2310.11511::s014::main-results::c001"
+  },
+  {
+    "question": "What did human evaluators assess in SELF-RAG's outputs, and how did they judge the reflection-token predictions?",
+    "chunk_id": "2310.11511::s015::analysis::c004"
+  },
+  {
+    "question": "What trade-offs do larger versus smaller fixed-size chunks create for retrieval, according to the RAG survey?",
+    "chunk_id": "2312.10997::s009::b-indexing-optimization::c000"
+  },
+  {
+    "question": "Why can relying directly on the user's original query hurt retrieval, and what query issue does the survey illustrate with 'LLM'?",
+    "chunk_id": "2312.10997::s010::c-query-optimization::c000"
+  },
+  {
+    "question": "Which metrics does the survey identify for assessing retrieval quality, and what aspects matter for generated answers?",
+    "chunk_id": "2312.10997::s022::b-evaluation-target::c000"
+  },
+  {
+    "question": "How does the survey distinguish context relevance, answer faithfulness, and answer relevance in RAG evaluation?",
+    "chunk_id": "2312.10997::s023::c-evaluation-aspects::c000"
+  },
+  {
+    "question": "What happens during iterative retrieval in RAG, and what drawback does the survey say can arise from repeating it?",
+    "chunk_id": "2312.10997::s017::a-iterative-retrieval::c000"
+  },
+  {
+    "question": "Why does the survey argue RAG can remain useful when language models accept very long contexts?",
+    "chunk_id": "2312.10997::s026::a-rag-vs-long-context::c000"
+  },
+  {
+    "question": "Which examples does the survey give of retrieval-augmented systems working with images, audio or video, and code?",
+    "chunk_id": "2312.10997::s031::f-multi-modal-rag::c000"
+  }
 ]

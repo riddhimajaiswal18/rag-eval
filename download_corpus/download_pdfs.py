@@ -22,7 +22,7 @@ Fixes vs. the original download_papers.py:
     human checking provenance later -- you want the title too.
   - document_id is now an explicit, stable field (= arxiv_id) that the
     chunking step downstream should use as the prefix for every
-    chunk_id it generates, e.g. "{document_id}::{section_slug}::c{n}".
+    chunk_id it generates, e.g. "{document_id}::s{section_index}::{section_slug}::c{n}".
 
 Usage:
     uv run python download_corpus/download_pdfs.py                 # download + extract all

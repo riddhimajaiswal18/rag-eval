@@ -1,36 +1,36 @@
 question,gold_chunk,yuan-0.8B-fp16,e5-mistral-7B-4bit,qwen3-8B-4bit
-"In the Transformer decoder, what prevents a position from using target tokens that come later in the output?",1706.03762::encoder-and-decoder-stacks::c000,3,0,1
-Why use several attention heads with separate learned projections instead of one full-width attention operation?,1706.03762::multi-head-attention::c000,0,0,0
-"How does the original Transformer inject token order into its inputs, and why did the authors prefer that encoding over learned position vectors?",1706.03762::positional-encoding::c000,0,0,0
-What three properties did the authors use to compare self-attention with recurrent and convolutional layers?,1706.03762::why-self-attention::c000,0,1,0
-What training data and batch token budget did the Transformer use for its English-to-French experiments?,1706.03762::training-data-and-batching::c000,3,0,0
-On what hardware and for how long were the base and big Transformer models trained?,1706.03762::hardware-and-schedule::c000,0,0,0
-What BLEU scores did the big Transformer reach on the WMT 2014 English-to-German and English-to-French tasks?,1706.03762::machine-translation::c000,0,17,0
-"In RAG-Sequence, how are the retrieved passages used across the tokens of a generated answer?",2005.11401::rag-sequence-model::c000,4,127,1
-How does RAG-Token differ from RAG-Sequence in its use of retrieved documents while generating an answer?,2005.11401::rag-token-model::c000,0,1,0
-"How does the RAG paper represent queries and passages for retrieval, and what search problem is used to find top passages?",2005.11401::retriever-dpr::c000,34,35,31
-"Which generator did the RAG authors use, and how did it receive the retrieved passage along with the input?",2005.11401::generator-bart::c000,146,96,60
-"During RAG fine-tuning, which retriever component stayed fixed and which components were updated?",2005.11401::training::c000,4,22,1
-How did the paper demonstrate that RAG can update world knowledge without retraining the language model?,2005.11401::index-hot-swapping::c000,0,13,0
-"What happened when the RAG retriever was frozen or replaced by BM25, and on which task did BM25 do best?",2005.11401::retrieval-ablations::c000,1,0,0
-How does PagedAttention organize a sequence's key/value cache to avoid requiring contiguous GPU memory?,2309.06180::pagedattention::c000,0,32,0
-"What operating-system memory idea inspired vLLM's KV cache manager, and how does vLLM apply it?",2309.06180::kv-cache-manager::c000,0,0,0
-"When vLLM must preempt requests under memory pressure, how does its scheduling policy choose which requests to keep or preempt?",2309.06180::scheduling-and-preemption::c000,0,33,0
-How does vLLM save KV-cache memory when one prompt produces several sampled continuations?,2309.06180::parallel-sampling::c000,2,45,4
-How can an LLM service avoid recomputing a repeated system prompt prefix for every request in vLLM?,2309.06180::shared-prefix::c000,1,34,1
-"In vLLM's tensor-parallel setup, how do GPU workers coordinate access to KV-cache blocks during decoding?",2309.06180::distributed-execution::c000,0,0,0
-"Which GPU-kernel optimizations does vLLM use to reduce overhead when writing, reading, and copying paged KV blocks?",2309.06180::kernel-level-optimization::c000,17,24,7
-"What problem does SELF-RAG address with fixed, unconditional passage retrieval, and what does it add to a language model?",2310.11511::abstract::c000,6,220,0
-What are the four SELF-RAG reflection signals used to decide on retrieval and judge passages or responses?,2310.11511::problem-formalization-and-overview::c001,5,60,0
-How are training examples for the SELF-RAG generator augmented with retrieval and critique signals?,2310.11511::training-the-generator-model::c000,1,1,0
-"How does SELF-RAG decide whether to retrieve during inference, and what alternative threshold control does the paper describe?",2310.11511::self-rag-inference::c000,0,0,0
-"How can SELF-RAG's inference-time scoring favor evidence-supported output, and how can decoding reject unsupported continuations outright?",2310.11511::self-rag-inference::c001,3,119,7
-On which long-form task did SELF-RAG show stronger citation precision and recall than most compared models?,2310.11511::main-results::c001,2,238,0
-"What did human evaluators assess in SELF-RAG's outputs, and how did they judge the reflection-token predictions?",2310.11511::human-evaluations::c000,0,3,0
-"What trade-offs do larger versus smaller fixed-size chunks create for retrieval, according to the RAG survey?",2312.10997::1-chunking-strategy::c000,48,9,0
-"Why can relying directly on the user's original query hurt retrieval, and what query issue does the survey illustrate with 'LLM'?",2312.10997::c-query-optimization::c000,0,44,1
-"Which metrics does the survey identify for assessing retrieval quality, and what aspects matter for generated answers?",2312.10997::b-evaluation-target::c000,0,12,0
-"How does the survey distinguish context relevance, answer faithfulness, and answer relevance in RAG evaluation?",2312.10997::c-evaluation-aspects::c000,1,230,0
-"What happens during iterative retrieval in RAG, and what drawback does the survey say can arise from repeating it?",2312.10997::a-iterative-retrieval::c000,0,0,0
-Why does the survey argue RAG can remain useful when language models accept very long contexts?,2312.10997::a-rag-vs-long-context::c000,0,20,0
-"Which examples does the survey give of retrieval-augmented systems working with images, audio or video, and code?",2312.10997::f-multi-modal-rag::c000,0,16,0
+"In the Transformer decoder, what prevents a position from using target tokens that come later in the output?",1706.03762::s004::encoder-and-decoder-stacks::c000,15,0,3
+Why use several attention heads with separate learned projections instead of one full-width attention operation?,1706.03762::s007::multi-head-attention::c000,0,0,0
+"How does the original Transformer inject token order into its inputs, and why did the authors prefer that encoding over learned position vectors?",1706.03762::s011::positional-encoding::c000,1,0,0
+What three properties did the authors use to compare self-attention with recurrent and convolutional layers?,1706.03762::s012::why-self-attention::c000,0,2,0
+What training data and batch token budget did the Transformer use for its English-to-French experiments?,1706.03762::s014::training-data-and-batching::c000,26,0,0
+On what hardware and for how long were the base and big Transformer models trained?,1706.03762::s015::hardware-and-schedule::c000,0,1,0
+What BLEU scores did the big Transformer reach on the WMT 2014 English-to-German and English-to-French tasks?,1706.03762::s019::machine-translation::c000,0,127,0
+"In RAG-Sequence, how are the retrieved passages used across the tokens of a generated answer?",2005.11401::s002::rag-sequence-model::c000,0,36,0
+How does RAG-Token differ from RAG-Sequence in its use of retrieved documents while generating an answer?,2005.11401::s007::rag-token::c000,2,1,2
+"How does the RAG paper represent queries and passages for retrieval, and what search problem is used to find top passages?",2005.11401::s003::retriever-dpr::c000,148,335,68
+"Which generator did the RAG authors use, and how did it receive the retrieved passage along with the input?",2005.11401::s004::generator-bart::c000,1448,810,154
+"During RAG fine-tuning, which retriever component stayed fixed and which components were updated?",2005.11401::s005::training::c000,6,47,4
+How did the paper demonstrate that RAG can update world knowledge without retraining the language model?,2005.11401::s017::additional-results::c001,12,135,7
+"What happened when the RAG retriever was frozen or replaced by BM25, and on which task did BM25 do best?",2005.11401::s017::additional-results::c000,33,40,0
+How does PagedAttention organize a sequence's key/value cache to avoid requiring contiguous GPU memory?,2309.06180::s009::pagedattention::c000,0,77,0
+"What operating-system memory idea inspired vLLM's KV cache manager, and how does vLLM apply it?",2309.06180::s010::kv-cache-manager::c000,0,0,0
+"When vLLM must preempt requests under memory pressure, how does its scheduling policy choose which requests to keep or preempt?",2309.06180::s013::scheduling-and-preemption::c000,0,104,0
+How does vLLM save KV-cache memory when one prompt produces several sampled continuations?,2309.06180::s012::application-to-other-decoding-scenarios::c000,0,1996,4
+How can an LLM service avoid recomputing a repeated system prompt prefix for every request in vLLM?,2309.06180::s012::application-to-other-decoding-scenarios::c004,1,0,0
+"In vLLM's tensor-parallel setup, how do GPU workers coordinate access to KV-cache blocks during decoding?",2309.06180::s014::distributed-execution::c000,4,0,0
+"Which GPU-kernel optimizations does vLLM use to reduce overhead when writing, reading, and copying paged KV blocks?",2309.06180::s016::kernel-level-optimization::c000,16,61,8
+"What problem does SELF-RAG address with fixed, unconditional passage retrieval, and what does it add to a language model?",2310.11511::s000::abstract::c000,13,2303,0
+What are the four SELF-RAG reflection signals used to decide on retrieval and judge passages or responses?,2310.11511::s005::problem-formalization-and-overview::c001,48,945,0
+How are training examples for the SELF-RAG generator augmented with retrieval and critique signals?,2310.11511::s009::training-the-generator-model::c000,3,2110,0
+"How does SELF-RAG decide whether to retrieve during inference, and what alternative threshold control does the paper describe?",2310.11511::s010::self-rag-inference::c000,0,0,0
+"How can SELF-RAG's inference-time scoring favor evidence-supported output, and how can decoding reject unsupported continuations outright?",2310.11511::s010::self-rag-inference::c001,1,1167,9
+On which long-form task did SELF-RAG show stronger citation precision and recall than most compared models?,2310.11511::s014::main-results::c001,4,2772,0
+"What did human evaluators assess in SELF-RAG's outputs, and how did they judge the reflection-token predictions?",2310.11511::s015::analysis::c004,0,6,0
+"What trade-offs do larger versus smaller fixed-size chunks create for retrieval, according to the RAG survey?",2312.10997::s009::b-indexing-optimization::c000,94,25,6
+"Why can relying directly on the user's original query hurt retrieval, and what query issue does the survey illustrate with 'LLM'?",2312.10997::s010::c-query-optimization::c000,1,12,2
+"Which metrics does the survey identify for assessing retrieval quality, and what aspects matter for generated answers?",2312.10997::s022::b-evaluation-target::c000,23,135,2
+"How does the survey distinguish context relevance, answer faithfulness, and answer relevance in RAG evaluation?",2312.10997::s023::c-evaluation-aspects::c000,10,7,2
+"What happens during iterative retrieval in RAG, and what drawback does the survey say can arise from repeating it?",2312.10997::s017::a-iterative-retrieval::c000,0,0,0
+Why does the survey argue RAG can remain useful when language models accept very long contexts?,2312.10997::s026::a-rag-vs-long-context::c000,0,168,0
+"Which examples does the survey give of retrieval-augmented systems working with images, audio or video, and code?",2312.10997::s031::f-multi-modal-rag::c000,5,148,0

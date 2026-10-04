@@ -1,0 +1,17 @@
+2906 chunks, 35 eval questions
+
+=== yuan-0.8B-fp16 ===
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  10%|9         | 30/310 [00:00<00:01, 269.25it/s]Loading weights:  22%|##1       | 67/310 [00:00<00:00, 322.33it/s]Loading weights:  32%|###2      | 100/310 [00:00<00:00, 312.28it/s]Loading weights:  43%|####2     | 132/310 [00:00<00:00, 276.66it/s]Loading weights:  52%|#####1    | 161/310 [00:00<00:00, 274.37it/s]Loading weights:  61%|######    | 189/310 [00:00<00:00, 259.51it/s]Loading weights:  70%|######9   | 216/310 [00:00<00:00, 258.09it/s]Loading weights:  79%|#######9  | 246/310 [00:00<00:00, 264.26it/s]Loading weights:  91%|######### | 282/310 [00:01<00:00, 288.47it/s]Loading weights: 100%|##########| 310/310 [00:01<00:00, 283.90it/s]
+Cooling down 45s...
+
+=== e5-mistral-7B-4bit ===
+!! e5-mistral-7B-4bit failed: RuntimeError: Cannot send a request, as the client has been closed.
+Cooling down 45s...
+
+=== qwen3-8B-4bit ===
+The `tokenizer_kwargs` argument was renamed and is now deprecated. Please use `processor_kwargs` instead.
+!! qwen3-8B-4bit failed: RuntimeError: Cannot send a request, as the client has been closed.
+Cooling down 45s...
+
+         model  dim  recall@1  recall@5  recall@10  MRR@10  paper_hit@5  chunks/s  encode_total_s  query_ms(median)  load_s  vram_loaded_GB  vram_peak_GB  peak_gpu_temp_C
+yuan-0.8B-fp16 1024     0.371       0.6      0.657   0.466        0.771      12.2           238.6              90.2    15.0            1.11          1.35               64

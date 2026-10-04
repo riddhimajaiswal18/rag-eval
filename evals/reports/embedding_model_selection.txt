@@ -6,4 +6,9 @@ embedding models. The evaluation covered both single-file (single-paper) evidenc
 
 The evaluation measured retrieval quality by ranking corpus chunks according to vector similarity against questions with known 
 ground-truth evidence. This makes the benchmark directly relevant to selecting the embedding model for the retrieval layer,
- while downstream generation quality will be evaluated separately using RAG evaluation methods such as DeepEval.
+while downstream generation quality will be evaluated separately using RAG evaluation methods such as DeepEval.
+
+Benchmark artifact note: the saved ranking outputs predate section-qualified chunk IDs. The evaluation input labels
+have since been migrated to the current IDs, but the saved scores and rankings have not been rerun. In particular,
+the legacy shared-prefix ID occurred twice in the vLLM paper and cannot be uniquely reconstructed from the old
+rankings. Treat the saved metrics as historical until the embedding benchmark is rerun against the current chunks.
