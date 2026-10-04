@@ -1,13 +1,11 @@
 """
 verify_corpus.py
 
-Verifies the EXACT CURRENT corpus from download_pdfs.py.
+Verifies the current corpus defined in download_pdfs.py.
 
-Important:
-- download_pdfs.py currently contains 69 PAPERS entries (despite its
-  comments/docstring saying "70").
-- This verifier therefore checks exactly those same 69 IDs and labels.
-- The expected local PDF name is always: <arxiv_id>.pdf
+The verifier reads the downloader's PAPERS literal directly, so the two
+scripts cannot silently drift into separate ID lists. The expected local PDF
+name is always: <arxiv_id>.pdf
 
 Checks for each entry:
 1. arXiv ID is present in the current corpus list.
@@ -17,10 +15,9 @@ Checks for each entry:
 5. The actual arXiv title is printed for provenance.
 
 This version does NOT compare against the old intended-title list.
-It therefore verifies the CURRENT downloader corpus and its local PDFs,
-rather than an outdated 70-paper list.
 """
 
+import ast
 import sys
 import time
 import xml.etree.ElementTree as ET
@@ -32,81 +29,20 @@ PDF_DIR = Path(__file__).resolve().parent / "rag_corpus" / "pdfs"
 ARXIV_API_URL = "https://export.arxiv.org/api/query"
 REQUEST_DELAY_SECONDS = 3.0
 
-# ============================================================================
-# EXACT PAPERS LIST FROM download_pdfs.py
-# ============================================================================
+def load_downloader_papers():
+    """Read the downloader's literal PAPERS list without importing its dependencies."""
+    downloader = Path(__file__).with_name("download_pdfs.py")
+    tree = ast.parse(downloader.read_text(encoding="utf-8"), filename=str(downloader))
+    for node in tree.body:
+        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", None) == "PAPERS":
+            papers = ast.literal_eval(node.value)
+            if not isinstance(papers, list):
+                raise ValueError("download_pdfs.py PAPERS must be a list")
+            return papers
+    raise ValueError("Could not find PAPERS in download_pdfs.py")
 
-PAPERS = [
-    ("2005.11401", "RAG"),
-    ("2302.00083", "RAG"),
-    ("2310.11511", "RAG"),
-    ("2401.15884", "RAG"),
-    ("2401.18059", "RAG"),
-    ("2004.04906", "RAG"),
-    ("2306.07174", "RAG"),
-    ("2004.12832", "Embeddings"),
-    ("1908.10084", "Embeddings"),
-    ("2402.03216", "Embeddings"),
-    ("2402.01613", "Embeddings"),
-    ("2205.13147", "Embeddings"),
-    ("2212.03533", "Embeddings"),
-    ("2201.10005", "Embeddings"),
-    ("1910.10683", "Embeddings"),
-    ("1706.03762", "Embeddings"),
-    ("2002.08909", "Embeddings"),
-    ("2304.07577", "Retrieval"),
-    ("2004.13969", "Retrieval"),
-    ("1808.03313", "Retrieval"),
-    ("1607.01759", "Retrieval"),
-    ("2008.11672", "Retrieval"),
-    ("2107.05720", "Retrieval"),
-    ("1804.07201", "Retrieval"),
-    ("2009.08553", "Retrieval"),
-    ("2112.01488", "Reranking"),
-    ("2202.06991", "Reranking"),
-    ("2210.10634", "Reranking"),
-    ("1710.05649", "Reranking"),
-    ("1905.03692", "Reranking"),
-    ("2304.10149", "Reranking"),
-    ("2307.09009", "Reranking"),
-    ("1603.09320", "Indexing"),
-    ("1802.08686", "Indexing"),
-    ("1906.08640", "Indexing"),
-    ("1801.05644", "Indexing"),
-    ("1702.08734", "Indexing"),
-    ("1604.06778", "Indexing"),
-    ("1308.2396", "Indexing"),
-    ("2309.15217", "Evaluation"),
-    ("2104.08663", "Evaluation"),
-    ("1611.09268", "Evaluation"),
-    ("1906.04341", "Evaluation"),
-    ("1809.09600", "Evaluation"),
-    ("2104.11807", "Evaluation"),
-    ("2104.08664", "Evaluation"),
-    ("2210.07316", "Evaluation"),
-    ("2210.03629", "Advanced"),
-    ("2307.08426", "Advanced"),
-    ("2404.16130", "Advanced"),
-    ("2403.14403", "Advanced"),
-    ("2105.12722", "Advanced"),
-    ("1908.06039", "Advanced"),
-    ("2310.11597", "Advanced"),
-    ("2205.08532", "Advanced"),
-    ("2203.00205", "Advanced"),
-    ("1901.02860", "LLM"),
-    ("2205.00296", "LLM"),
-    ("2210.11416", "LLM"),
-    ("2104.08691", "LLM"),
-    ("2201.11903", "LLM"),
-    ("2305.10601", "LLM"),
-    ("2205.10625", "LLM"),
-    ("2212.08073", "LLM"),
-    ("2106.09685", "LLM"),
-    ("2103.12219", "Production"),
-    ("2312.09092", "Production"),
-    ("2311.00663", "Production"),
-    ("2008.07890", "Production"),
-]
+
+PAPERS = load_downloader_papers()
 
 
 def fetch_title(arxiv_id):
@@ -151,10 +87,6 @@ def valid_pdf(path):
 
 def main():
     expected_count = len(PAPERS)
-
-    if expected_count != 69:
-        print(f"ERROR: download corpus should currently contain 69 entries, found {expected_count}.")
-        sys.exit(1)
 
     ids = [arxiv_id for arxiv_id, _ in PAPERS]
 
