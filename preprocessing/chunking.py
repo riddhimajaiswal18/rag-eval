@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 chunking.py - RagAndEval V1 preprocessing: PDF -> GROBID TEI -> flat sections
--> sentence-aware token chunks (400 tok, ~100 tok sentence overlap) -> JSON.
+-> sentence-aware chunks (<=1900 tokens under every benchmark tokenizer,
+with 100-token sentence overlap) -> JSON.
 
 INPUT:    download_corpus/rag_corpus/pdfs/   (metadata: .../extracted_text/)
 OUTPUT:   preprocessing/data/grobid_tei/, preprocessing/data/chunks/
@@ -17,12 +18,13 @@ import json
 import logging
 import re
 import time
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional
 from xml.etree import ElementTree as ET
 
 import requests
-import tiktoken
+from transformers import AutoTokenizer
 
 # ---------------------------------------------------------------- config/paths
 ROOT = Path(__file__).resolve().parent.parent
@@ -36,9 +38,14 @@ TEI_DIR.mkdir(parents=True, exist_ok=True)
 CHUNKS_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_GROBID_URL = "http://localhost:8070"
-CHUNK_SIZE_TOKENS = 400
+CHUNK_SIZE_TOKENS = 1900
 OVERLAP_TOKENS = 100
-ENCODING_NAME = "cl100k_base"
+MAX_SEQ_LEN = 2000
+TOKENIZER_MODELS = {
+    "yuan-0.8B-fp16": "IEITYuan/Yuan-embedding-2.0-en",
+    "e5-mistral-7B-4bit": "intfloat/e5-mistral-7b-instruct",
+    "qwen3-8B-4bit": "Qwen/Qwen3-Embedding-8B",
+}
 HIERARCHY_ENABLED = False  # V1: flat sections only
 REFERENCE_HEADINGS = {"references", "bibliography", "works cited", "literature cited"}
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
@@ -323,147 +330,150 @@ def split_sentences(text: str) -> List[str]:
     return [p.strip() for p in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", text) if p.strip()] if text else []
 
 
-def split_large_sentence(sentence: str, encoding, chunk_size: int) -> List[str]:
-    """Last resort: hard-split a sentence longer than chunk_size."""
-    toks = encoding.encode(sentence)
-    pieces = (encoding.decode(toks[i:i + chunk_size]).strip() for i in range(0, len(toks), chunk_size))
-    return [p for p in pieces if p]
+class TokenBudget:
+    """Count with each retrieval model tokenizer and enforce the largest count."""
+
+    def __init__(self, tokenizers: Dict[str, object]):
+        self.tokenizers = tokenizers
+
+    @lru_cache(maxsize=100_000)
+    def _count_cached(self, text: str) -> int:
+        return max(len(tokenizer.encode(text, add_special_tokens=True))
+                   for tokenizer in self.tokenizers.values())
+
+    def count(self, text: str) -> int:
+        return self._count_cached(text)
 
 
-def chunk_section(section: Dict, encoding, chunk_size: int = CHUNK_SIZE_TOKENS,
-                  overlap_size: int = OVERLAP_TOKENS) -> List[Dict]:
-    """Pack sentences into <=chunk_size chunks, prepending sentence-level overlap
-    from the previous chunk only if the result still fits in chunk_size."""
-    ntok = lambda s: len(encoding.encode(s))
+def load_tokenizers() -> Dict[str, object]:
+    return {
+        label: AutoTokenizer.from_pretrained(model_name)
+        for label, model_name in TOKENIZER_MODELS.items()
+    }
 
-    blocks = section.get("blocks")
-    if blocks and any(b.get("type") == "table" or b.get("figure") for b in blocks):
-        output: List[Dict] = []
-        pending: List[str] = []
 
-        def append_text(value: str) -> None:
-            count = ntok(value)
-            output.append({"text": value, "token_count": count,
-                           "overlap_prev_tokens": 0})
-
-        def flush_text() -> None:
-            if pending:
-                output.extend(chunk_section({"text": "\n\n".join(pending)}, encoding,
-                                            chunk_size, overlap_size))
-                pending.clear()
-
-        block_index = 0
-        while block_index < len(blocks):
-            block = blocks[block_index]
-            if block.get("type") == "table":
-                flush_text()
-                serialized = serialize_table(block)
-                if ntok(serialized) <= chunk_size:
-                    append_text(serialized)
-                    continue
-
-                context_lines = [block["caption"]] if block.get("caption") else []
-                if block.get("context"):
-                    context_lines.append("Description: " + block["context"])
-                if block.get("headers"):
-                    context_lines.append("Headers: " + " | ".join(block["headers"]))
-                context = "\n".join(context_lines)
-                rows = ["Row: " + " | ".join(row) for row in block.get("rows", [])]
-                if not rows:
-                    # Malformed/empty tables still retain their caption/context.
-                    append_text("\n".join(context_lines))
-                    continue
-                current_rows: List[str] = []
-                for row in rows:
-                    candidate = "\n".join([context, *current_rows, row]).strip()
-                    if current_rows and ntok(candidate) > chunk_size:
-                        append_text("\n".join([context, *current_rows]).strip())
-                        current_rows = []
-                    row_text = "\n".join([context, row]).strip()
-                    if ntok(row_text) <= chunk_size:
-                        current_rows.append(row)
-                    else:
-                        if current_rows:
-                            append_text("\n".join([context, *current_rows]).strip())
-                            current_rows = []
-                        room = max(1, chunk_size - ntok(context))
-                        for part in split_large_sentence(row, encoding, room):
-                            append_text("\n".join([context, part]).strip())
-                if current_rows:
-                    append_text("\n".join([context, *current_rows]).strip())
-            elif block.get("figure"):
-                value = block["text"]
-                previous = "\n\n".join(pending)
-                if previous and ntok(previous + "\n\n" + value) <= chunk_size:
-                    pending.clear()
-                else:
-                    flush_text()
-                    previous = ""
-                next_block = blocks[block_index + 1] if block_index + 1 < len(blocks) else None
-                following = (next_block.get("text", "") if next_block
-                             and next_block.get("type") != "table"
-                             and not next_block.get("figure") else "")
-                candidate = "\n\n".join(part for part in (previous, value, following) if part)
-                if following and ntok(candidate) <= chunk_size:
-                    append_text(candidate)
-                    block_index += 1
-                else:
-                    candidate = "\n\n".join(part for part in (previous, value) if part)
-                    if ntok(candidate) <= chunk_size:
-                        append_text(candidate)
-                    else:
-                        for sentence in split_sentences(value):
-                            parts = ([sentence] if ntok(sentence) <= chunk_size
-                                     else split_large_sentence(sentence, encoding, chunk_size))
-                            for part in parts:
-                                append_text(part)
+def split_large_sentence(sentence: str, budget: TokenBudget, chunk_size: int) -> List[str]:
+    """Split oversized text at whitespace while respecting every model tokenizer."""
+    remaining = sentence.strip()
+    pieces: List[str] = []
+    while remaining:
+        if budget.count(remaining) <= chunk_size:
+            pieces.append(remaining)
+            break
+        low, high, best = 1, len(remaining), 0
+        while low <= high:
+            middle = (low + high) // 2
+            if budget.count(remaining[:middle].strip()) <= chunk_size:
+                best = middle
+                low = middle + 1
             else:
-                pending.append(block.get("text", ""))
-            block_index += 1
-        flush_text()
-        return output
+                high = middle - 1
+        if best == 0:
+            raise ValueError("A single character exceeds the configured chunk token limit.")
+        boundary = remaining.rfind(" ", 0, best + 1)
+        if boundary > 0:
+            best = boundary
+        piece = remaining[:best].strip()
+        if not piece:
+            piece = remaining[:best].strip()
+        pieces.append(piece)
+        remaining = remaining[best:].strip()
+    return pieces
 
-    sentences: List[str] = []
-    for s in split_sentences(section["text"].strip()):
-        sentences += [s] if ntok(s) <= chunk_size else split_large_sentence(s, encoding, chunk_size)
 
-    # 1) pack
+def _overlap_suffix(text: str, budget: TokenBudget, overlap_size: int) -> str:
+    sentences = split_sentences(text)
+    selected: List[str] = []
+    for sentence in reversed(sentences):
+        candidate = " ".join([sentence, *selected])
+        if budget.count(candidate) > overlap_size:
+            break
+        selected.insert(0, sentence)
+    if selected:
+        return " ".join(selected)
+    # Preserve a short tail even when the last sentence exceeds the overlap budget.
+    low, high, best = 1, len(text), 0
+    while low <= high:
+        middle = (low + high) // 2
+        suffix = text[-middle:].strip()
+        if budget.count(suffix) <= overlap_size:
+            best = middle
+            low = middle + 1
+        else:
+            high = middle - 1
+    if best:
+        suffix = text[-best:].strip()
+        boundary = suffix.find(" ")
+        return suffix[boundary + 1:] if boundary >= 0 else suffix
+    return ""
+
+
+def chunk_section(section: Dict, budget: TokenBudget, chunk_size: int = CHUNK_SIZE_TOKENS,
+                  overlap_size: int = OVERLAP_TOKENS) -> List[Dict]:
+    """Pack semantic text units under the largest of the benchmark token counts."""
+    atoms: List[str] = []
+    blocks = section.get("blocks") or [{"type": "text", "text": section.get("text", "")}]
+    block_index = 0
+    while block_index < len(blocks):
+        block = blocks[block_index]
+        if block.get("type") == "table":
+            serialized = serialize_table(block)
+            if budget.count(serialized) <= chunk_size:
+                atoms.append(serialized)
+            else:
+                context = [block["caption"]] if block.get("caption") else []
+                if block.get("context"):
+                    context.append("Description: " + block["context"])
+                if block.get("headers"):
+                    context.append("Headers: " + " | ".join(block["headers"]))
+                context_text = "\n".join(context)
+                rows = block.get("rows", [])
+                if not rows:
+                    atoms.extend(split_large_sentence(context_text, budget, chunk_size))
+                for row in rows:
+                    row_text = "Row: " + " | ".join(row)
+                    value = "\n".join(part for part in (context_text, row_text) if part)
+                    atoms.extend(split_large_sentence(value, budget, chunk_size))
+        elif block.get("figure"):
+            value = block.get("text", "")
+            next_block = blocks[block_index + 1] if block_index + 1 < len(blocks) else None
+            if next_block and next_block.get("type") != "table" and not next_block.get("figure"):
+                value = "\n\n".join(part for part in (value, next_block.get("text", "")) if part)
+                block_index += 1
+            atoms.extend(split_large_sentence(value, budget, chunk_size))
+        else:
+            for sentence in split_sentences(block.get("text", "")):
+                atoms.extend(split_large_sentence(sentence, budget, chunk_size))
+        block_index += 1
+
     base: List[str] = []
-    cur: List[str] = []
-    cur_tokens = 0
-    for s in sentences:
-        n = ntok(s)
-        if cur and cur_tokens + n > chunk_size:
-            base.append(" ".join(cur).strip())
-            cur, cur_tokens = [], 0
-        cur.append(s)
-        cur_tokens += n
-    if cur:
-        base.append(" ".join(cur).strip())
+    current: List[str] = []
+    for atom in atoms:
+        candidate = " ".join(current + [atom]).strip()
+        if current and budget.count(candidate) > chunk_size:
+            base.append(" ".join(current).strip())
+            current = [atom]
+        else:
+            current.append(atom)
+    if current:
+        base.append(" ".join(current).strip())
 
-    # 2) overlap
     chunks: List[Dict] = []
-    for i, text in enumerate(base):
-        if i > 0:
-            overlap: List[str] = []
-            used = 0
-            for s in reversed(split_sentences(base[i - 1])):
-                n = ntok(s)
-                if used + n > overlap_size:
-                    break
-                overlap.insert(0, s)
-                used += n
-            if overlap:
-                candidate = " ".join(overlap) + " " + text
-                if ntok(candidate) <= chunk_size:
-                    text = candidate
-        count = ntok(text)
+    for index, text in enumerate(base):
+        overlap = _overlap_suffix(base[index - 1], budget, overlap_size) if index else ""
+        if overlap:
+            candidate = overlap + " " + text
+            if budget.count(candidate) <= chunk_size:
+                text = candidate
+        count = budget.count(text)
+        if count > chunk_size:
+            raise ValueError(f"Chunk contains {count} tokens; configured maximum is {chunk_size}.")
         chunks.append({"text": text, "token_count": count,
-                       "overlap_prev_tokens": 0 if i == 0 else min(overlap_size, count)})
+                       "overlap_prev_tokens": budget.count(overlap) if overlap else 0})
     return chunks
 
 
-def build_chunk_document(structured: Dict, encoding) -> Dict:
+def build_chunk_document(structured: Dict, budget: TokenBudget) -> Dict:
     doc_id = structured["document_id"]
 
     all_chunks: List[Dict] = []
@@ -473,7 +483,7 @@ def build_chunk_document(structured: Dict, encoding) -> Dict:
         slug = slugify(title)
 
         for i, chunk in enumerate(
-            chunk_section(section, encoding)
+            chunk_section(section, budget)
         ):
             all_chunks.append({
                 "chunk_id": f"{doc_id}::s{section['section_index']:03d}::{slug}::c{i:03d}",
@@ -492,7 +502,9 @@ def build_chunk_document(structured: Dict, encoding) -> Dict:
         "chunking_config": {
             "chunk_size_tokens": CHUNK_SIZE_TOKENS,
             "overlap_tokens": OVERLAP_TOKENS,
-            "tokenizer": ENCODING_NAME,
+            "tokenizer": "maximum count across benchmark model tokenizers",
+            "tokenizers": TOKENIZER_MODELS,
+            "max_sequence_length": MAX_SEQ_LEN,
             "overlap_unit": "sentence",
         },
 
@@ -501,7 +513,7 @@ def build_chunk_document(structured: Dict, encoding) -> Dict:
 
 
 # ------------------------------------------------------------------- pipeline
-def process_paper(document_id: str, encoding, grobid_url: str, overwrite: bool) -> Dict:
+def process_paper(document_id: str, budget: TokenBudget, grobid_url: str, overwrite: bool) -> Dict:
     pdf_path = find_pdf(document_id)
     logger.info("PDF: %s", pdf_path.name)
     metadata = load_metadata(document_id, pdf_path)
@@ -519,7 +531,7 @@ def process_paper(document_id: str, encoding, grobid_url: str, overwrite: bool) 
     ),
     "sections": extract_flat_sections(root),
 }
-    result = build_chunk_document(structured, encoding)
+    result = build_chunk_document(structured, budget)
 
     (CHUNKS_DIR / f"{document_id}_chunks.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -548,22 +560,26 @@ def main() -> None:
     if not document_ids:
         raise RuntimeError(f"No PDFs found in:\n{PDF_DIR}")
 
-    encoding = tiktoken.get_encoding(ENCODING_NAME)
+    budget = TokenBudget(load_tokenizers())
     bar = "=" * 70
     for line in (bar, "RAG CHUNKING", bar,
                  f"PDF directory: {PDF_DIR}", f"TEI directory: {TEI_DIR}",
                  f"Output directory: {CHUNKS_DIR}", f"Papers: {len(document_ids)}",
-                 f"Chunk size: {CHUNK_SIZE_TOKENS} tokens", f"Overlap: {OVERLAP_TOKENS} tokens",
+                 f"Chunk size: at most {CHUNK_SIZE_TOKENS} tokens under all benchmark tokenizers",
+                 f"Overlap: {OVERLAP_TOKENS} tokens", f"Embedding input limit: {MAX_SEQ_LEN}",
                  "Hierarchy: disabled (V1)", "Embeddings: not generated here", ""):
         logger.info(line)
 
-    check_grobid(args.grobid_url)
+    needs_grobid = args.overwrite or any(not (TEI_DIR / f"{doc_id}.tei.xml").exists()
+                                         for doc_id in document_ids)
+    if needs_grobid:
+        check_grobid(args.grobid_url)
 
     ok = total_sections = total_chunks = 0
     failures: List[tuple] = []
     for doc_id in document_ids:
         try:
-            r = process_paper(doc_id, encoding, args.grobid_url, args.overwrite)
+            r = process_paper(doc_id, budget, args.grobid_url, args.overwrite)
             ok += 1
             total_sections += r["num_sections"]
             total_chunks += r["num_chunks"]

@@ -103,8 +103,7 @@ MODELS = [
     },
 ]
 
-MAX_SEQ_LEN = 512  # chunks are ~400 tokens under chunking.py's neutral tiktoken count; a model's own
-                    # tokenizer can run a bit higher on the same text, so this leaves headroom
+MAX_SEQ_LEN = 2000  # chunking.py enforces a 1900-token maximum under all benchmark tokenizers
 KS = (1, 5, 10)
 N_LATENCY_QUERIES = 20  # queries timed one at a time (realistic RAG usage)
 COOLDOWN_S = 45  # laptop GPU thermals under sustained 7-8B loads -- bump this if you see throttling

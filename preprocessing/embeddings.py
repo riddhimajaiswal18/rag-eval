@@ -24,7 +24,7 @@ PENDING_BATCH_FILE = CACHE_DIR / "pending_batch.npz"
 
 MODEL_NAME = "Qwen/Qwen3-Embedding-8B"
 BATCH_SIZE = 2
-MAX_SEQ_LENGTH = 512
+MAX_SEQ_LENGTH = 2000
 CONFIG_VERSION = 1
 MODEL_KWARGS = {
     "quantization_config": {

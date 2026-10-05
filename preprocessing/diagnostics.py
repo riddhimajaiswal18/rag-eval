@@ -5,7 +5,7 @@ Run with ``uv run python preprocessing/diagnostics.py``. Reads cached GROBID
 TEI and chunk JSON files, then loads only the benchmark tokenizers (not the
 embedding models). Counts include each tokenizer's special tokens. Benchmark
 corpus inputs have no model-specific prefixes and all three scripts set a
-512-token SentenceTransformers limit.
+2000-token SentenceTransformers limit.
 """
 from __future__ import annotations
 
@@ -25,7 +25,8 @@ MODELS = {
     "E5": "intfloat/e5-mistral-7b-instruct",
     "Qwen": "Qwen/Qwen3-Embedding-8B",
 }
-EFFECTIVE_LIMIT = 512
+EFFECTIVE_LIMIT = 2000
+CHUNK_LIMIT = 1900
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 
 
@@ -99,8 +100,8 @@ def audit(tokenizers) -> dict[str, Any]:
             "p95": quantile(values, .95) if values else None,
             "p99": quantile(values, .99) if values else None,
             "max": max(values) if values else None,
-            ">400": sum(n > 400 for n in values),
-            ">480": sum(n > 480 for n in values),
+            ">chunk_limit": sum(n > CHUNK_LIMIT for n in values),
+            ">chunk_limit-32": sum(n > CHUNK_LIMIT - 32 for n in values),
             ">limit-32": sum(n > EFFECTIVE_LIMIT - 32 for n in values),
             ">limit": sum(n > EFFECTIVE_LIMIT for n in values),
         }
@@ -114,7 +115,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, help="Also write the complete report as JSON.")
     args = parser.parse_args()
     report = audit(load_tokenizers())
-    print("Benchmark tokenizer audit (counts include special tokens; effective limit 512)")
+    print("Benchmark tokenizer audit (counts include special tokens; chunk limit 1900, input limit 2000)")
     for label, stats in report["distributions"].items():
         print(f"\n{label}: {stats['checkpoint']}")
         for key, value in stats.items():
