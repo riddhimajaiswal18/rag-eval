@@ -5,11 +5,13 @@ chunking.py - RagAndEval V1 preprocessing: PDF -> GROBID TEI -> flat sections
 with 100-token sentence overlap) -> JSON.
 
 INPUT:    download_corpus/rag_corpus/pdfs/   (metadata: .../extracted_text/)
+          or .../extracted_text/*.json with --source extracted-text
 OUTPUT:   preprocessing/data/grobid_tei/, preprocessing/data/chunks/
 GROBID:   http://localhost:8070
 
     uv run python preprocessing/chunking.py --ids 2005.11401 2310.11511 --overwrite
     uv run python preprocessing/chunking.py --overwrite
+    uv run python preprocessing/chunking.py --source extracted-text
 """
 from __future__ import annotations
 
@@ -181,6 +183,35 @@ def load_metadata(document_id: str, pdf_path: Path) -> Dict:
         "category": data.get("category", ""),
         "timestamp": data.get("timestamp"),
         "source_file": pdf_path.name,
+    }
+
+
+def load_extracted_text(document_id: str) -> Dict:
+    """Load downloader-produced text and metadata for direct chunking."""
+    path = METADATA_DIR / f"{document_id}.json"
+    if not path.is_file():
+        raise FileNotFoundError(f"No extracted-text JSON found for {document_id}:\n{path}")
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+    stored_id = data.get("document_id", data.get("arxiv_id"))
+    if stored_id != document_id:
+        raise ValueError(
+            f"Extracted-text JSON {path} identifies {stored_id!r}, expected {document_id!r}"
+        )
+
+    text = data.get("text")
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError(f"Extracted-text JSON has no usable text:\n{path}")
+
+    text = re.sub(r"(?m)^[ \t]*--- Page \d+ ---[ \t]*$", "", text).strip()
+    if not text:
+        raise ValueError(f"Extracted-text JSON contains no text after removing page markers:\n{path}")
+
+    return {
+        "document_id": document_id,
+        "title": data.get("title", ""),
+        "category": data.get("category", ""),
+        "text": text,
     }
 
 
@@ -513,24 +544,39 @@ def build_chunk_document(structured: Dict, budget: TokenBudget) -> Dict:
 
 
 # ------------------------------------------------------------------- pipeline
-def process_paper(document_id: str, budget: TokenBudget, grobid_url: str, overwrite: bool) -> Dict:
-    pdf_path = find_pdf(document_id)
-    logger.info("PDF: %s", pdf_path.name)
-    metadata = load_metadata(document_id, pdf_path)
-    tei_path = generate_tei(document_id, pdf_path, grobid_url, overwrite)
+def process_paper(
+    document_id: str,
+    budget: TokenBudget,
+    grobid_url: str,
+    overwrite: bool,
+    source: str = "grobid",
+) -> Dict:
+    if source == "extracted-text":
+        metadata = load_extracted_text(document_id)
+        structured = {
+            "document_id": metadata["document_id"],
+            "sections": [{
+                "section_title": "Full text",
+                "section_index": 0,
+                "text": metadata["text"],
+                "blocks": [{"type": "text", "text": metadata["text"]}],
+            }],
+        }
+    else:
+        pdf_path = find_pdf(document_id)
+        logger.info("PDF: %s", pdf_path.name)
+        metadata = load_metadata(document_id, pdf_path)
+        tei_path = generate_tei(document_id, pdf_path, grobid_url, overwrite)
 
-    try:
-        root = ET.fromstring(tei_path.read_bytes())
-    except ET.ParseError as exc:
-        raise RuntimeError(f"Invalid TEI XML:\n{tei_path}") from exc
+        try:
+            root = ET.fromstring(tei_path.read_bytes())
+        except ET.ParseError as exc:
+            raise RuntimeError(f"Invalid TEI XML:\n{tei_path}") from exc
 
-    structured = {
-    "document_id": metadata.get(
-        "document_id",
-        document_id,
-    ),
-    "sections": extract_flat_sections(root),
-}
+        structured = {
+            "document_id": metadata.get("document_id", document_id),
+            "sections": extract_flat_sections(root),
+        }
     result = build_chunk_document(structured, budget)
 
     (CHUNKS_DIR / f"{document_id}_chunks.json").write_text(
@@ -543,35 +589,50 @@ def available_ids() -> List[str]:
     return [p.stem for p in sorted(PDF_DIR.glob("*.pdf"))]
 
 
+def available_extracted_text_ids() -> List[str]:
+    return [p.stem for p in sorted(METADATA_DIR.glob("*.json"))]
+
+
 def parse_args() -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="GROBID-backed RAG chunking pipeline")
+    ap = argparse.ArgumentParser(description="Chunk RAG corpus papers from GROBID or extracted text")
     ap.add_argument("--ids", nargs="+", help="Specific document IDs to process.")
     ap.add_argument("--grobid-url", default=DEFAULT_GROBID_URL, help=f"GROBID URL (default: {DEFAULT_GROBID_URL})")
     ap.add_argument("--overwrite", action="store_true",
                     help="Re-run GROBID and overwrite existing TEI and chunk files.")
+    ap.add_argument("--source", choices=("grobid", "extracted-text"), default="grobid",
+                    help="Read source text from GROBID/PDF (default) or downloader extracted-text JSON.")
     return ap.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    if not PDF_DIR.exists():
+    if args.source == "grobid" and not PDF_DIR.exists():
         raise FileNotFoundError(f"PDF directory does not exist:\n{PDF_DIR}")
-    document_ids = args.ids or available_ids()
+    if args.source == "extracted-text" and not METADATA_DIR.exists():
+        raise FileNotFoundError(f"Extracted-text directory does not exist:\n{METADATA_DIR}")
+    document_ids = args.ids or (
+        available_extracted_text_ids() if args.source == "extracted-text" else available_ids()
+    )
     if not document_ids:
-        raise RuntimeError(f"No PDFs found in:\n{PDF_DIR}")
+        source_dir = METADATA_DIR if args.source == "extracted-text" else PDF_DIR
+        raise RuntimeError(f"No input files found in:\n{source_dir}")
 
     budget = TokenBudget(load_tokenizers())
     bar = "=" * 70
     for line in (bar, "RAG CHUNKING", bar,
-                 f"PDF directory: {PDF_DIR}", f"TEI directory: {TEI_DIR}",
+                 f"Source: {args.source}",
+                 f"Input directory: {METADATA_DIR if args.source == 'extracted-text' else PDF_DIR}",
+                 f"TEI directory: {TEI_DIR}",
                  f"Output directory: {CHUNKS_DIR}", f"Papers: {len(document_ids)}",
                  f"Chunk size: at most {CHUNK_SIZE_TOKENS} tokens under all benchmark tokenizers",
                  f"Overlap: {OVERLAP_TOKENS} tokens", f"Embedding input limit: {MAX_SEQ_LEN}",
                  "Hierarchy: disabled (V1)", "Embeddings: not generated here", ""):
         logger.info(line)
 
-    needs_grobid = args.overwrite or any(not (TEI_DIR / f"{doc_id}.tei.xml").exists()
-                                         for doc_id in document_ids)
+    needs_grobid = args.source == "grobid" and (
+        args.overwrite or any(not (TEI_DIR / f"{doc_id}.tei.xml").exists()
+                              for doc_id in document_ids)
+    )
     if needs_grobid:
         check_grobid(args.grobid_url)
 
@@ -579,7 +640,7 @@ def main() -> None:
     failures: List[tuple] = []
     for doc_id in document_ids:
         try:
-            r = process_paper(doc_id, budget, args.grobid_url, args.overwrite)
+            r = process_paper(doc_id, budget, args.grobid_url, args.overwrite, args.source)
             ok += 1
             total_sections += r["num_sections"]
             total_chunks += r["num_chunks"]
