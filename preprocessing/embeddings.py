@@ -8,7 +8,7 @@ import os
 import tempfile
 from collections import defaultdict, deque
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
 
@@ -36,7 +36,7 @@ MODEL_KWARGS = {
 }
 
 
-def load_chunks() -> list[dict[str, str]]:
+def load_chunks() -> list[dict[str, Any]]:
     """Load corpus chunks in deterministic file and source order."""
     files = sorted(CHUNKS_DIR.glob("*.json"))
     if not files:
@@ -47,7 +47,13 @@ def load_chunks() -> list[dict[str, str]]:
         doc = json.loads(path.read_text(encoding="utf-8"))
         for item in doc.get("chunks", []):
             chunk_id = item["chunk_id"]
-            chunks.append({"id": chunk_id, "text": item["text"]})
+            chunks.append(
+                {
+                    "id": chunk_id,
+                    "text": item["text"],
+                    "token_count": item.get("token_count"),
+                }
+            )
     counts: dict[str, int] = {}
     for chunk in chunks:
         counts[chunk["id"]] = counts.get(chunk["id"], 0) + 1
@@ -93,7 +99,7 @@ def atomic_npy(path: Path, array: np.ndarray) -> None:
             os.unlink(temp_name)
 
 
-def cache_signature(chunks: list[dict[str, str]], dimension: int) -> dict:
+def cache_signature(chunks: list[dict[str, Any]], dimension: int) -> dict:
     return {
         "model": MODEL_NAME,
         "embedding_dimension": dimension,
@@ -125,7 +131,16 @@ def embedding_config(dimension: int) -> dict:
 def validate_cached_matrix(metadata: dict, matrix: np.ndarray, dimension: int) -> None:
     expected = embedding_config(dimension)
     actual = {key: metadata.get(key) for key in expected}
-    if actual != expected:
+    # A changed context limit can still reuse exact chunks that fit under both
+    # limits. create_partial_matrix filters out any longer chunks for re-encoding.
+    same_except_context = {
+        key: value for key, value in actual.items() if key != "max_seq_length"
+    } == {key: value for key, value in expected.items() if key != "max_seq_length"}
+    context_limits_are_valid = all(
+        isinstance(value, int) and value > 0
+        for value in (actual.get("max_seq_length"), expected.get("max_seq_length"))
+    )
+    if actual != expected and not (same_except_context and context_limits_are_valid):
         raise ValueError("Embedding cache model/configuration/dimension is incompatible; refusing reuse.")
     ids = metadata.get("embedded_chunk_ids", [])
     hashes = metadata.get("embedded_chunk_fingerprints", [])
@@ -187,7 +202,7 @@ def apply_pending_batch(matrix: np.ndarray, signature: dict, completed: list[int
 
 
 def create_partial_matrix(
-    chunks: list[dict[str, str]], signature: dict, dimension: int, cached_vectors: np.ndarray | None,
+    chunks: list[dict[str, Any]], signature: dict, dimension: int, cached_vectors: np.ndarray | None,
     cached_metadata: dict | None,
 ) -> tuple[np.memmap, list[int]]:
     """Create current-order working storage, reusing vectors for identical text."""
@@ -204,8 +219,22 @@ def create_partial_matrix(
             # configuration stay unchanged. Text fingerprints let us carry
             # those vectors forward. A deque preserves multiplicity when the
             # corpus contains repeated identical text.
-            for row, text_hash in enumerate(cached_metadata["embedded_chunk_fingerprints"]):
-                reusable[text_hash].append(row)
+            old_limit = cached_metadata.get("max_seq_length", signature["max_seq_length"])
+            current_limit = signature["max_seq_length"]
+            if old_limit == current_limit:
+                for row, text_hash in enumerate(cached_metadata["embedded_chunk_fingerprints"]):
+                    reusable[text_hash].append(row)
+            else:
+                safe_counts = defaultdict(int)
+                safe_limit = min(old_limit, current_limit)
+                for chunk in chunks:
+                    token_count = chunk.get("token_count")
+                    if isinstance(token_count, int) and token_count <= safe_limit:
+                        safe_counts[fingerprint(chunk["text"])] += 1
+                for row, text_hash in enumerate(cached_metadata["embedded_chunk_fingerprints"]):
+                    if safe_counts[text_hash] > 0:
+                        reusable[text_hash].append(row)
+                        safe_counts[text_hash] -= 1
         for index, text_hash in enumerate(signature["chunk_fingerprints"]):
             candidates = reusable[text_hash]
             if candidates:
@@ -223,7 +252,7 @@ def create_partial_matrix(
 
 
 def encode_corpus(
-    chunks: list[dict[str, str]],
+    chunks: list[dict[str, Any]],
     encoder: Callable[[list[str]], np.ndarray],
     dimension: int,
 ) -> np.ndarray:
@@ -283,8 +312,10 @@ def encode_corpus(
             validate_cached_matrix(cached_metadata, cached_vectors, dimension)
 
             # Exact complete cache: no migration or re-encoding is necessary.
+            cached_config = {key: cached_metadata.get(key) for key in config}
             if (cached_metadata.get("chunk_ids") == signature["chunk_ids"]
                     and cached_metadata.get("chunk_fingerprints") == signature["chunk_fingerprints"]
+                    and cached_config == config
                     and len(cached_metadata["embedded_chunk_ids"]) == len(chunks)):
                 print(f"Found complete {MODEL_NAME} embedding cache: {len(chunks)} / {len(chunks)} chunks.")
                 write_progress(signature, list(range(len(chunks))), dimension)

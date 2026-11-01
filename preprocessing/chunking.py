@@ -441,7 +441,10 @@ def _overlap_suffix(text: str, budget: TokenBudget, overlap_size: int) -> str:
 
 def chunk_section(section: Dict, budget: TokenBudget, chunk_size: int = CHUNK_SIZE_TOKENS,
                   overlap_size: int = OVERLAP_TOKENS) -> List[Dict]:
-    """Pack semantic text units under the largest of the benchmark token counts."""
+    """Pack section text while reserving room for overlap on later chunks."""
+    if chunk_size <= 0 or overlap_size < 0 or overlap_size >= chunk_size:
+        raise ValueError("chunk_size must be positive and overlap_size must be smaller than chunk_size.")
+    content_limit = chunk_size - overlap_size
     atoms: List[str] = []
     blocks = section.get("blocks") or [{"type": "text", "text": section.get("text", "")}]
     block_index = 0
@@ -449,7 +452,7 @@ def chunk_section(section: Dict, budget: TokenBudget, chunk_size: int = CHUNK_SI
         block = blocks[block_index]
         if block.get("type") == "table":
             serialized = serialize_table(block)
-            if budget.count(serialized) <= chunk_size:
+            if budget.count(serialized) <= content_limit:
                 atoms.append(serialized)
             else:
                 context = [block["caption"]] if block.get("caption") else []
@@ -460,30 +463,32 @@ def chunk_section(section: Dict, budget: TokenBudget, chunk_size: int = CHUNK_SI
                 context_text = "\n".join(context)
                 rows = block.get("rows", [])
                 if not rows:
-                    atoms.extend(split_large_sentence(context_text, budget, chunk_size))
+                    atoms.extend(split_large_sentence(context_text, budget, content_limit))
                 for row in rows:
                     row_text = "Row: " + " | ".join(row)
                     value = "\n".join(part for part in (context_text, row_text) if part)
-                    atoms.extend(split_large_sentence(value, budget, chunk_size))
+                    atoms.extend(split_large_sentence(value, budget, content_limit))
         elif block.get("figure"):
             value = block.get("text", "")
             next_block = blocks[block_index + 1] if block_index + 1 < len(blocks) else None
             if next_block and next_block.get("type") != "table" and not next_block.get("figure"):
                 value = "\n\n".join(part for part in (value, next_block.get("text", "")) if part)
                 block_index += 1
-            atoms.extend(split_large_sentence(value, budget, chunk_size))
+            atoms.extend(split_large_sentence(value, budget, content_limit))
         else:
             for sentence in split_sentences(block.get("text", "")):
-                atoms.extend(split_large_sentence(sentence, budget, chunk_size))
+                atoms.extend(split_large_sentence(sentence, budget, content_limit))
         block_index += 1
 
     base: List[str] = []
     current: List[str] = []
+    current_limit = chunk_size
     for atom in atoms:
         candidate = " ".join(current + [atom]).strip()
-        if current and budget.count(candidate) > chunk_size:
+        if current and budget.count(candidate) > current_limit:
             base.append(" ".join(current).strip())
             current = [atom]
+            current_limit = content_limit
         else:
             current.append(atom)
     if current:
@@ -492,10 +497,12 @@ def chunk_section(section: Dict, budget: TokenBudget, chunk_size: int = CHUNK_SI
     chunks: List[Dict] = []
     for index, text in enumerate(base):
         overlap = _overlap_suffix(base[index - 1], budget, overlap_size) if index else ""
+        overlap_limit = overlap_size
+        while overlap and budget.count(overlap + " " + text) > chunk_size and overlap_limit > 0:
+            overlap_limit -= 1
+            overlap = _overlap_suffix(base[index - 1], budget, overlap_limit)
         if overlap:
-            candidate = overlap + " " + text
-            if budget.count(candidate) <= chunk_size:
-                text = candidate
+            text = overlap + " " + text
         count = budget.count(text)
         if count > chunk_size:
             raise ValueError(f"Chunk contains {count} tokens; configured maximum is {chunk_size}.")
@@ -523,6 +530,7 @@ def build_chunk_document(structured: Dict, budget: TokenBudget) -> Dict:
                 "chunk_index": i,
                 "text": chunk["text"],
                 "token_count": chunk["token_count"],
+                "overlap_prev_tokens": chunk["overlap_prev_tokens"],
             })
 
     return {
@@ -533,6 +541,7 @@ def build_chunk_document(structured: Dict, budget: TokenBudget) -> Dict:
         "chunking_config": {
             "chunk_size_tokens": CHUNK_SIZE_TOKENS,
             "overlap_tokens": OVERLAP_TOKENS,
+            "new_content_limit_tokens": CHUNK_SIZE_TOKENS - OVERLAP_TOKENS,
             "tokenizer": "maximum count across benchmark model tokenizers",
             "tokenizers": TOKENIZER_MODELS,
             "max_sequence_length": MAX_SEQ_LEN,
@@ -625,7 +634,9 @@ def main() -> None:
                  f"TEI directory: {TEI_DIR}",
                  f"Output directory: {CHUNKS_DIR}", f"Papers: {len(document_ids)}",
                  f"Chunk size: at most {CHUNK_SIZE_TOKENS} tokens under all benchmark tokenizers",
-                 f"Overlap: {OVERLAP_TOKENS} tokens", f"Embedding input limit: {MAX_SEQ_LEN}",
+                 f"Overlap: up to {OVERLAP_TOKENS} tokens (reserved while packing content)",
+                 f"New content limit: {CHUNK_SIZE_TOKENS - OVERLAP_TOKENS} tokens",
+                 f"Embedding input limit: {MAX_SEQ_LEN}",
                  "Hierarchy: disabled (V1)", "Embeddings: not generated here", ""):
         logger.info(line)
 
