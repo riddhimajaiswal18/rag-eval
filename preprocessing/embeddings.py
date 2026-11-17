@@ -13,8 +13,10 @@ from typing import Any, Callable
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
-CHUNKS_DIR = ROOT / "preprocessing" / "data" / "chunks"
-CACHE_DIR = ROOT / "preprocessing" / "data" / "embeddings" / "qwen3-8B-4bit"
+ARXIV_CHUNKS_DIR = ROOT / "preprocessing" / "data" / "chunks"
+ARXIV_CACHE_DIR = ROOT / "preprocessing" / "data" / "embeddings" / "qwen3-8B-4bit"
+CHUNKS_DIR = ARXIV_CHUNKS_DIR
+CACHE_DIR = ARXIV_CACHE_DIR
 EMBEDDINGS_FILE = CACHE_DIR / "embeddings.npy"
 METADATA_FILE = CACHE_DIR / "metadata.json"
 PROGRESS_FILE = CACHE_DIR / "progress.json"
@@ -34,6 +36,35 @@ MODEL_KWARGS = {
     },
     "torch_dtype": "float16",
 }
+
+
+def configure_corpus(corpus: str) -> None:
+    """Select corpus-local chunk and embedding-cache paths.
+
+    The default arXiv paths are retained verbatim for existing callers.
+    """
+    global CHUNKS_DIR, CACHE_DIR, EMBEDDINGS_FILE, METADATA_FILE, PROGRESS_FILE
+    global PARTIAL_EMBEDDINGS_FILE, PARTIAL_METADATA_FILE, PENDING_BATCH_FILE
+    if corpus == "arxiv":
+        CHUNKS_DIR = ARXIV_CHUNKS_DIR
+        CACHE_DIR = ARXIV_CACHE_DIR
+        EMBEDDINGS_FILE = CACHE_DIR / "embeddings.npy"
+        METADATA_FILE = CACHE_DIR / "metadata.json"
+        PROGRESS_FILE = CACHE_DIR / "progress.json"
+        PARTIAL_EMBEDDINGS_FILE = CACHE_DIR / "embeddings.partial.npy"
+        PARTIAL_METADATA_FILE = CACHE_DIR / "metadata.partial.json"
+        PENDING_BATCH_FILE = CACHE_DIR / "pending_batch.npz"
+        return
+    if corpus != "peerqa":
+        raise ValueError(f"Unsupported corpus {corpus!r}.")
+    CHUNKS_DIR = ROOT / "download_corpus" / "peerqa" / "chunks"
+    CACHE_DIR = ROOT / "preprocessing" / "data" / "peerqa" / "embeddings" / "qwen3-8B-4bit"
+    EMBEDDINGS_FILE = CACHE_DIR / "embeddings.npy"
+    METADATA_FILE = CACHE_DIR / "metadata.json"
+    PROGRESS_FILE = CACHE_DIR / "progress.json"
+    PARTIAL_EMBEDDINGS_FILE = CACHE_DIR / "embeddings.partial.npy"
+    PARTIAL_METADATA_FILE = CACHE_DIR / "metadata.partial.json"
+    PENDING_BATCH_FILE = CACHE_DIR / "pending_batch.npz"
 
 
 def load_chunks() -> list[dict[str, Any]]:
@@ -413,8 +444,10 @@ def load_model():
 def main() -> None:
     global BATCH_SIZE
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--corpus", choices=("arxiv", "peerqa"), default="arxiv")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Chunks per checkpoint batch")
     args = parser.parse_args()
+    configure_corpus(args.corpus)
     if args.batch_size < 1:
         parser.error("--batch-size must be positive")
     BATCH_SIZE = args.batch_size

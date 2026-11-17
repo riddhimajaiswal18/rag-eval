@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import os
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -22,14 +23,44 @@ from qdrant_client import QdrantClient, models
 from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 
 ROOT = Path(__file__).resolve().parents[1]
-CHUNKS_DIR = ROOT / "preprocessing" / "data" / "chunks"
-EMBEDDING_DIR = ROOT / "preprocessing" / "data" / "embeddings" / "qwen3-8B-4bit"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+ARXIV_CHUNKS_DIR = ROOT / "preprocessing" / "data" / "chunks"
+ARXIV_EMBEDDING_DIR = ROOT / "preprocessing" / "data" / "embeddings" / "qwen3-8B-4bit"
+CHUNKS_DIR = ARXIV_CHUNKS_DIR
+EMBEDDING_DIR = ARXIV_EMBEDDING_DIR
 EMBEDDINGS_FILE = EMBEDDING_DIR / "embeddings.npy"
 EMBEDDING_METADATA_FILE = EMBEDDING_DIR / "metadata.json"
 DEFAULT_BATCH_SIZE = 128
 MAX_UPSERT_ATTEMPTS = 4
 RETRY_BASE_DELAY_SECONDS = 1.0
 RETRYABLE_HTTP_STATUS_CODES = {408, 429, 500, 502, 503, 504}
+CORPUS_ID = "arxiv"
+
+
+def configure_corpus(corpus: str) -> None:
+    """Select separate local files and a separate remote collection per corpus."""
+    global CHUNKS_DIR, EMBEDDING_DIR, EMBEDDINGS_FILE, EMBEDDING_METADATA_FILE, CORPUS_ID
+    if corpus == "arxiv":
+        CORPUS_ID = "arxiv"
+        CHUNKS_DIR = ARXIV_CHUNKS_DIR
+        EMBEDDING_DIR = ARXIV_EMBEDDING_DIR
+        EMBEDDINGS_FILE = EMBEDDING_DIR / "embeddings.npy"
+        EMBEDDING_METADATA_FILE = EMBEDDING_DIR / "metadata.json"
+        return
+    if corpus != "peerqa":
+        raise ValueError(f"Unsupported corpus {corpus!r}.")
+    CORPUS_ID = "peerqa"
+    CHUNKS_DIR = ROOT / "download_corpus" / "peerqa" / "chunks"
+    EMBEDDING_DIR = ROOT / "preprocessing" / "data" / "peerqa" / "embeddings" / "qwen3-8B-4bit"
+    EMBEDDINGS_FILE = EMBEDDING_DIR / "embeddings.npy"
+    EMBEDDING_METADATA_FILE = EMBEDDING_DIR / "metadata.json"
+
+
+def collection_name_for(corpus: str) -> str:
+    if corpus == "peerqa":
+        return os.getenv("QDRANT_COLLECTION_PEERQA", "peerqa_qwen3_embeddings")
+    return os.getenv("QDRANT_COLLECTION_ARXIV", os.getenv("QDRANT_COLLECTION", "qwen3_embeddings"))
 
 
 def sha256_text(text: str) -> str:
@@ -55,6 +86,7 @@ def load_chunks() -> list[dict[str, Any]]:
                 raise ValueError(f"Chunk file {path} contains a chunk without an ID or text.")
             chunks.append(
                 {
+                    "corpus_id": item.get("corpus_id", CORPUS_ID),
                     "chunk_id": chunk_id,
                     "document_id": document_id,
                     "section_title": item.get("section_title", ""),
@@ -63,6 +95,15 @@ def load_chunks() -> list[dict[str, Any]]:
                     "token_count": item.get("token_count"),
                     "overlap_prev_tokens": item.get("overlap_prev_tokens", 0),
                     "text": text,
+                    **{
+                        key: item[key]
+                        for key in (
+                            "corpus_id", "original_paper_id", "title", "section_id",
+                            "paragraph_id", "sentence_ids", "source_refs", "source_text",
+                            "source_location", "extraction_method", "paragraph_part_index",
+                        )
+                        if key in item
+                    },
                     "fingerprint": sha256_text(text),
                 }
             )
@@ -137,6 +178,21 @@ def ensure_collection(
             field_schema=models.PayloadSchemaType.KEYWORD,
             wait=True,
         )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="document_id",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+            wait=True,
+        )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="text",
+            field_schema=models.TextIndexParams(
+                type=models.TextIndexType.TEXT,
+                scoring=True,
+            ),
+            wait=True,
+        )
         print(f"Created collection {collection_name!r} with dense dimension {dimension}.")
         return
 
@@ -158,6 +214,21 @@ def ensure_collection(
         field_schema=models.PayloadSchemaType.KEYWORD,
         wait=True,
     )
+    client.create_payload_index(
+        collection_name=collection_name,
+        field_name="document_id",
+        field_schema=models.PayloadSchemaType.KEYWORD,
+        wait=True,
+    )
+    client.create_payload_index(
+        collection_name=collection_name,
+        field_name="text",
+        field_schema=models.TextIndexParams(
+            type=models.TextIndexType.TEXT,
+            scoring=True,
+        ),
+        wait=True,
+    )
     print(f"Using existing compatible collection {collection_name!r}.")
 
 
@@ -173,6 +244,8 @@ def corpus_version(chunks: list[dict[str, Any]], metadata: dict[str, Any]) -> st
         "chunk_ids": [chunk["chunk_id"] for chunk in chunks],
         "chunk_fingerprints": [chunk["fingerprint"] for chunk in chunks],
     }
+    if CORPUS_ID == "peerqa":
+        identity["corpus_id"] = CORPUS_ID
     payload = json.dumps(identity, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
@@ -236,17 +309,8 @@ def upload_chunks(
         for index in range(start, stop):
             chunk = chunks[index]
             payload = {
-                key: chunk[key]
-                for key in (
-                    "chunk_id",
-                    "document_id",
-                    "section_title",
-                    "section_index",
-                    "chunk_index",
-                    "token_count",
-                    "overlap_prev_tokens",
-                    "text",
-                )
+                key: value for key, value in chunk.items()
+                if key != "fingerprint" and value is not None
             }
             payload["corpus_version"] = version
             points.append(
@@ -275,8 +339,27 @@ def verify_uploaded_corpus(
     print(f"Verified {count} points for corpus version {version[:12]}.")
 
 
+def write_peerqa_index_status(collection_name: str, version: str, chunks: list[dict[str, Any]]) -> None:
+    if CORPUS_ID != "peerqa":
+        return
+    from peerqa.corpus import MANIFEST_PATH, STATUS_PATH, _atomic_json
+
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    papers_indexed = len({chunk["document_id"] for chunk in chunks})
+    manifest.setdefault("counts", {})["papers_indexed"] = papers_indexed
+    _atomic_json(MANIFEST_PATH, manifest)
+    _atomic_json(STATUS_PATH, {
+        "corpus_id": "peerqa",
+        "collection": collection_name,
+        "corpus_version": version,
+        "indexed_chunks": len(chunks),
+        "papers_indexed": papers_indexed,
+    })
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--corpus", choices=("arxiv", "peerqa"), default="arxiv")
     parser.add_argument("--check-only", action="store_true", help="Validate local files without contacting Qdrant.")
     parser.add_argument(
         "--setup-only",
@@ -290,6 +373,7 @@ def main() -> None:
     )
     parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
     args = parser.parse_args()
+    configure_corpus(args.corpus)
     if args.batch_size < 1:
         parser.error("--batch-size must be positive")
     if args.setup_only and args.verify_only:
@@ -297,14 +381,14 @@ def main() -> None:
 
     if args.setup_only:
         load_dotenv(ROOT / ".env")
-        required = ("QDRANT_URL", "QDRANT_API_KEY", "QDRANT_COLLECTION")
+        required = ("QDRANT_URL", "QDRANT_API_KEY")
         missing = [key for key in required if not os.getenv(key)]
         if missing:
             raise ValueError(f"Missing Qdrant environment settings: {', '.join(missing)}")
         dimension = int(os.getenv("QDRANT_VECTOR_SIZE", "4096"))
         distance = collection_distance()
         client = QdrantClient(url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"])
-        collection_name = os.environ["QDRANT_COLLECTION"]
+        collection_name = collection_name_for(args.corpus)
         ensure_collection(client, collection_name, dimension, distance)
         print(f"Qdrant collection setup complete: {collection_name!r}.")
         return
@@ -318,7 +402,7 @@ def main() -> None:
         return
 
     load_dotenv(ROOT / ".env")
-    required = ("QDRANT_URL", "QDRANT_API_KEY", "QDRANT_COLLECTION")
+    required = ("QDRANT_URL", "QDRANT_API_KEY")
     missing = [key for key in required if not os.getenv(key)]
     if missing:
         raise ValueError(f"Missing Qdrant environment settings: {', '.join(missing)}")
@@ -330,12 +414,14 @@ def main() -> None:
         )
     distance = collection_distance()
     client = QdrantClient(url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"])
-    collection_name = os.environ["QDRANT_COLLECTION"]
+    collection_name = collection_name_for(args.corpus)
     ensure_collection(client, collection_name, dimension, distance)
     if args.verify_only:
         verify_uploaded_corpus(client, collection_name, len(chunks), version)
+        write_peerqa_index_status(collection_name, version, chunks)
         return
     upload_chunks(client, collection_name, chunks, vectors, version, args.batch_size)
+    write_peerqa_index_status(collection_name, version, chunks)
     print(f"Qdrant ingestion complete: {collection_name!r}.")
 
 

@@ -11,7 +11,9 @@ __pycache__/
 # Generated data
 data/
 rag_corpus/
+/outputs/
 *.pdf
+/download_corpus/peerqa/
 
 # IDE
 .vscode/

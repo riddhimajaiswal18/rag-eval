@@ -2,69 +2,57 @@ $ErrorActionPreference = 'Stop'
 
 $projectRoot = $PSScriptRoot
 $python = Join-Path $projectRoot '.venv\Scripts\python.exe'
-$evalFile = Join-Path $projectRoot 'evals\embeddings\evals_v2.jsonl'
+$pdfDir = Join-Path $projectRoot 'download_corpus\rag_corpus\pdfs'
 $chunkDir = Join-Path $projectRoot 'preprocessing\data\chunks'
 
 if (-not (Test-Path $python)) {
     throw "Project Python environment not found at $python. Create it with uv sync before running the pipeline."
 }
 
-if (-not (Test-Path $evalFile)) {
-    throw "V2 evaluation dataset not found at $evalFile."
-}
+function Invoke-PipelineScript {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RelativePath,
+        [string[]]$ScriptArguments = @()
+    )
 
-$dataset = Get-Content -LiteralPath $evalFile -TotalCount 1 | ConvertFrom-Json
-if ($dataset.record_type -ne 'dataset_metadata' -or -not $dataset.candidate_paper_ids) {
-    throw "$evalFile must start with dataset metadata containing candidate_paper_ids."
-}
-$candidateIds = @($dataset.candidate_paper_ids | ForEach-Object { [string]$_ })
-
-Write-Host 'Step 1/3: Downloading PDFs and extracting text...'
-Push-Location $projectRoot
-try {
-    & $python (Join-Path $projectRoot 'download_corpus\download_pdfs.py') @args
-    if ($LASTEXITCODE -ne 0) {
-        throw "download_pdfs.py failed with exit code $LASTEXITCODE"
+    $scriptPath = Join-Path $projectRoot $RelativePath
+    Push-Location $projectRoot
+    try {
+        & $python $scriptPath @ScriptArguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "$RelativePath failed with exit code $LASTEXITCODE"
+        }
+    }
+    finally {
+        Pop-Location
     }
 }
-finally {
-    Pop-Location
-}
 
-Write-Host "Step 2/3: Chunking $($candidateIds.Count) V2 candidate papers (GROBID is needed only when TEI files are missing)..."
-Push-Location $projectRoot
-try {
-    & $python (Join-Path $projectRoot 'preprocessing\chunking.py') --ids $candidateIds
-    if ($LASTEXITCODE -ne 0) {
-        throw "chunking.py failed with exit code $LASTEXITCODE"
-    }
-}
-finally {
-    Pop-Location
-}
+Write-Host 'Step 1/4: Downloading PDFs and extracting text...'
+Invoke-PipelineScript 'download_corpus\download_pdfs.py' $args
 
-$expectedIds = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-foreach ($id in $candidateIds) { [void]$expectedIds.Add($id) }
-$actualIds = @(
-    Get-ChildItem -LiteralPath $chunkDir -Filter '*_chunks.json' -File -ErrorAction SilentlyContinue |
-        ForEach-Object { $_.BaseName -replace '_chunks$', '' }
+Write-Host 'Step 2/4: Chunking the corpus (GROBID is needed only when TEI files are missing)...'
+Invoke-PipelineScript 'preprocessing\chunking.py'
+
+$pdfIds = @(
+    Get-ChildItem -LiteralPath $pdfDir -Filter '*.pdf' -File -ErrorAction SilentlyContinue |
+        ForEach-Object { $_.BaseName }
 )
+$chunkFiles = @(Get-ChildItem -LiteralPath $chunkDir -Filter '*_chunks.json' -File -ErrorAction SilentlyContinue)
+$expectedIds = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($id in $pdfIds) { [void]$expectedIds.Add($id) }
+$actualIds = @($chunkFiles | ForEach-Object { $_.BaseName -replace '_chunks$', '' })
 $unexpectedIds = @($actualIds | Where-Object { -not $expectedIds.Contains($_) })
-$missingIds = @($candidateIds | Where-Object { $_ -notin $actualIds })
-if ($unexpectedIds.Count -gt 0 -or $missingIds.Count -gt 0) {
-    throw "Chunk files must match the V2 candidate list. Missing: $($missingIds -join ', '); unexpected: $($unexpectedIds -join ', ')."
+$missingIds = @($pdfIds | Where-Object { $_ -notin $actualIds })
+if ($pdfIds.Count -eq 0 -or $unexpectedIds.Count -gt 0 -or $missingIds.Count -gt 0) {
+    throw "Chunk files must match the downloaded PDF corpus. Missing: $($missingIds -join ', '); unexpected: $($unexpectedIds -join ', ')."
 }
 
-Write-Host 'Step 3/3: Running V2 embedding model comparison (requires a CUDA GPU)...'
-Push-Location $projectRoot
-try {
-    & $python (Join-Path $projectRoot 'evals\embeddings\compare_embeddings_v2.py')
-    if ($LASTEXITCODE -ne 0) {
-        throw "compare_embeddings_v2.py failed with exit code $LASTEXITCODE"
-    }
-}
-finally {
-    Pop-Location
-}
+Write-Host "Step 3/4: Generating or resuming Qwen embeddings for $($pdfIds.Count) papers..."
+Invoke-PipelineScript 'preprocessing\embeddings.py'
 
-Write-Host 'Pipeline finished.'
+Write-Host 'Step 4/4: Validating the embedding cache and ingesting it into Qdrant...'
+Invoke-PipelineScript 'retrieval\qdrant_setup.py'
+
+Write-Host 'Corpus ingestion finished. Query-time retrieval is not yet implemented.'
