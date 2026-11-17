@@ -55,4 +55,4 @@ Invoke-PipelineScript 'preprocessing\embeddings.py'
 Write-Host 'Step 4/4: Validating the embedding cache and ingesting it into Qdrant...'
 Invoke-PipelineScript 'retrieval\qdrant_setup.py'
 
-Write-Host 'Corpus ingestion finished. Query-time retrieval is not yet implemented.'
+Write-Host 'Corpus ingestion finished. Query with scripts\query.py or retrieval\search.py.'

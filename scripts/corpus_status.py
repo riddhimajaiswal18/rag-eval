@@ -1,27 +1,16 @@
 #!/usr/bin/env python3
-"""Print local ingestion/indexing status for PeerQA or arXiv."""
-from pathlib import Path
-import argparse
+"""Print local arXiv acquisition and chunk counts."""
 import json
-import sys
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+CORPUS_DIR = ROOT / "download_corpus" / "rag_corpus"
 
-from peerqa.corpus import read_status
-
-parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--corpus", choices=("peerqa", "arxiv"), default="peerqa")
-args = parser.parse_args()
-if args.corpus == "peerqa":
-    result = read_status()
-else:
-    result = {
-        "corpus_id": "arxiv",
-        "pdfs": len(list((ROOT / "download_corpus" / "rag_corpus" / "pdfs").glob("*.pdf"))),
-        "extracted_documents": len(list((ROOT / "download_corpus" / "rag_corpus" / "extracted_text").glob("*.json"))),
-        "chunks": len(list((ROOT / "preprocessing" / "data" / "chunks").glob("*_chunks.json"))),
-        "note": "Use the existing arXiv metadata and qdrant_setup.py --verify-only for indexed point totals.",
-    }
+result = {
+    "corpus_id": "arxiv",
+    "pdfs": len(list((CORPUS_DIR / "pdfs").glob("*.pdf"))),
+    "extracted_documents": len(list((CORPUS_DIR / "extracted_text").glob("*.json"))),
+    "chunks": len(list((ROOT / "preprocessing" / "data" / "chunks").glob("*_chunks.json"))),
+    "note": "Use retrieval/qdrant_setup.py --verify-only to verify the indexed corpus version and point count.",
+}
 print(json.dumps(result, ensure_ascii=False, indent=2))

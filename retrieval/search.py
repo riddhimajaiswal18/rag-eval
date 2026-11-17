@@ -149,7 +149,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("question", nargs="?", help="Query text (positional form retained for compatibility).")
     parser.add_argument("--query", dest="query_text", help="Query text.")
-    parser.add_argument("--corpus", choices=("arxiv", "peerqa"), default="arxiv")
     parser.add_argument("--mode", choices=("dense", "bm25", "hybrid"), default="hybrid")
     parser.add_argument("--limit", type=int, default=100)
     parser.add_argument("--rerank", action="store_true")
@@ -161,20 +160,14 @@ def main() -> None:
     if args.query_text and args.question:
         parser.error("provide either --query or a positional query, not both")
     load_dotenv(ROOT / ".env")
-    collection = collection_name_for(args.corpus)
+    collection = collection_name_for()
     version = args.version
-    if not version and args.corpus == "peerqa":
-        from peerqa.corpus import STATUS_PATH
-
-        if STATUS_PATH.exists():
-            version = json.loads(STATUS_PATH.read_text(encoding="utf-8")).get("corpus_version")
     if not version:
         try:
             from . import qdrant_setup
         except ImportError:
             import qdrant_setup
 
-        qdrant_setup.configure_corpus(args.corpus)
         chunks, _vectors, metadata = qdrant_setup.load_and_validate_cache()
         version = qdrant_setup.corpus_version(chunks, metadata)
     if not version:

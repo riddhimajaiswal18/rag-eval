@@ -127,38 +127,11 @@ The project follows these principles:
 
 8. **Generalization over benchmark optimization:** A technique should not be considered universally effective simply because it performs well on one benchmark.
 
-## 5. Initial Datasets
+## 5. Initial Dataset
 
-The project will initially use two research-paper corpora with different roles.
+The initial implementation uses the existing arXiv research-paper corpus. Its current acquisition, extraction, chunking, embedding, Qdrant indexing, and query-time retrieval stages provide a baseline for controlled experiments.
 
-### PeerQA
-
-**Primary evaluation benchmark**
-
-PeerQA provides human-annotated scientific question-answer pairs, evidence sentences and answerability labels.
-
-It will initially be used to:
-- Establish retrieval baselines.
-- Evaluate evidence retrieval.
-- Compare retrieval and chunking configurations.
-- Evaluate answerability and abstention.
-- Reproduce selected published retrieval baselines.
-
-The initial implementation will use the 90-paper subset with bundled extracted text.
-
-### Existing arXiv Research Corpus
-
-**Secondary experimental corpus**
-
-The existing collection of research papers will be retained for:
-- Testing whether findings transfer beyond PeerQA.
-- Exploring different document structures.
-- Conducting additional robustness experiments.
-- Investigating the effect of corpus characteristics on retrieval performance.
-
-Synthetic questions may be used as supplementary experimental data, but their results will be distinguished from human-grounded benchmark results.
-
-The two corpora will not be treated as interchangeable benchmarks. Their roles and available ground truth will be documented separately.
+Synthetic questions may be used as supplementary experimental data, but their results should be distinguished from human-grounded benchmark results. Additional corpora can be integrated later when their source data, licenses, evidence labels, and preprocessing requirements are established.
 
 ## 6. Evaluation Methodology
 
