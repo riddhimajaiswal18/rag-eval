@@ -1,218 +1,332 @@
-# Corpus-Aware RAG Evaluation Framework
+# RagAndEval
 
-> Understanding when, why, and under what conditions different RAG architectures work.
+**An experimental platform for evaluating RAG architectures, retrieval strategies, and their quality–performance–cost trade-offs.**
 
-## 1. Overview
+RAG systems are built by combining document processing, chunking strategies, embedding models, vector databases, and retrieval techniques. However, choosing an architecture involves more than simply retrieving relevant documents.
 
-Retrieval-Augmented Generation (RAG) systems can be built using several architectural choices: fixed-size chunking, semantic chunking, parent-child retrieval, hybrid search, reranking, graph retrieval, hierarchical retrieval, and more.
+Different workloads introduce different requirements. A configuration that performs well on one corpus or query distribution may perform poorly on another. Improvements in retrieval quality may also introduce additional indexing costs, storage overhead, or query latency.
 
-However, there is no universally optimal RAG architecture.
+**RagAndEval explores these trade-offs through reproducible experiments, retrieval evaluation, and architectural comparisons.**
 
-The effectiveness of each technique depends on multiple factors, including:
-- The structure and characteristics of the corpus.
-- How information and evidence are distributed across documents.
-- The complexity and nature of user queries.
-- The relationships between entities and concepts in the corpus.
-- Computational constraints such as latency, storage and retrieval cost.
+The goal is to understand not just *which configuration performs better*, but:
 
-A technique that performs exceptionally well on one corpus may provide little benefit or introduce unnecessary complexity on another.
+- Under what conditions does it perform better?
+- What does the improvement cost?
+- Which architectural choices are justified for a particular workload?
+- How can developers make informed decisions instead of relying on default configurations?
 
-This project aims to systematically investigate these relationships through controlled experiments and reproducible evaluations.
+---
 
-## 2. Core Objective
+## 1. Problem Statement
 
-**To investigate how corpus characteristics and query requirements influence the effectiveness of different RAG architectures, and identify the conditions under which particular architectural choices provide measurable benefits.**
+There is no universally optimal RAG architecture.
 
-Rather than searching for a single best-performing RAG architecture, the project seeks to understand:
+Its performance depends on several interacting variables:
 
-- When does a particular retrieval technique improve performance?
-- What corpus characteristics make that technique effective?
-- Which query types benefit from different retrieval architectures?
-- When does additional architectural complexity provide little or no improvement?
-- What trade-offs exist between retrieval quality, answer quality, latency, storage and computational cost?
-- To what extent do experimental findings generalize across different corpora?
+- **Corpus characteristics:** document length, structure, content distribution, and information density.
+- **Query characteristics:** semantic queries, keyword-heavy queries, mathematical queries, and multi-hop questions.
+- **Chunking:** chunk boundaries, size, overlap, and structural preservation.
+- **Retrieval:** dense, sparse, hybrid, and reranking strategies.
+- **Infrastructure:** embedding computation, index construction, retrieval latency, and storage.
+- **Resource constraints:** compute availability, throughput, and inference costs.
 
-The ultimate goal is to develop an evidence-backed understanding of RAG architecture selection.
+A retrieval strategy that improves recall may also increase latency or storage requirements. Similarly, more sophisticated chunking does not necessarily justify its preprocessing and indexing overhead.
 
-## 3. Research Questions
+RagAndEval investigates these interactions rather than assuming that more complex architectures are always better.
 
-The project will investigate the following questions:
+## 2. Areas of Investigation
 
-### RQ1. Retrieval Architecture
+### Retrieval quality
 
-How do different retrieval architectures perform under different corpus and query conditions?
+- How do dense, BM25, and hybrid retrieval compare?
+- When does hybrid retrieval provide meaningful improvements over individual retrieval methods?
+- What is the effect of reranking on retrieval quality and latency?
+- How do different query characteristics influence retrieval performance?
 
-Architectures to investigate:
-- BM25 / lexical retrieval
-- Dense vector retrieval
-- Hybrid retrieval
-- Cross-encoder reranking
-- ColBERT / multi-vector retrieval
-- Graph-based retrieval
-- Hierarchical retrieval approaches such as RAPTOR
+### Chunking and document representation
 
-### RQ2. Chunking Strategies
+- How do chunk size and overlap affect evidence retrieval?
+- Does structure-aware chunking improve retrieval over flat chunking?
+- How does changing chunk boundaries affect the ability to retrieve relevant evidence?
+- What information is lost when documents are converted into plain text?
 
-How do different chunking strategies affect evidence retrieval and downstream answer quality?
+### Multimodal and visual retrieval
 
-Strategies to investigate:
-- Fixed-size chunking
-- Recursive chunking
-- Semantic chunking
-- Structure-aware chunking
-- Parent-child chunking
-- Multi-level hierarchical chunking
+Text extraction can lose information from mathematical equations, diagrams, and complex document layouts.
 
-### RQ3. Corpus Characteristics
+An experimental direction is to investigate **ColPali as an alternative visual retrieval path** when conventional text-based retrieval is insufficient.
 
-Which properties of a corpus influence the effectiveness of different RAG architectures?
+The objective is to understand:
 
-Potential characteristics:
-- Document structure and hierarchy.
-- Average document and section length.
-- Information density.
-- Evidence distribution across paragraphs and sections.
-- Entity and relationship density.
-- Cross-document dependencies.
-- Consistency of document formatting.
+- Whether visual retrieval recovers relevant evidence missed by text retrieval.
+- Which query types benefit from visual document representations.
+- Whether retrieval improvements justify additional inference and storage costs.
+- When a visual retrieval path is preferable to conventional text retrieval.
 
-### RQ4. Query Characteristics
+ColPali is an experimental direction, not a currently completed retrieval capability.
 
-How do different query requirements influence the choice of retrieval architecture?
+### Infrastructure and resource efficiency
 
-Potential categories:
-- Factual and direct retrieval.
-- Exact terminology and keyword-dependent queries.
-- Conceptual and semantic queries.
-- Multi-hop reasoning.
-- Cross-section evidence retrieval.
-- Cross-document synthesis.
-- Unanswerable queries.
+- How does corpus size affect indexing and retrieval performance?
+- How do vector quantisation strategies affect storage and retrieval quality?
+- How does query concurrency affect latency and throughput?
+- What are the trade-offs between embedding generation, index construction, and query-time costs?
+- Can retrieval quality be improved without proportionally increasing compute and inference costs?
 
-### RQ5. Performance and Trade-offs
+## 3. Architecture
 
-Do improvements in retrieval quality justify the additional computational and architectural complexity?
+The current implementation consists of a document acquisition and processing pipeline, followed by shared embedding, indexing, and retrieval infrastructure.
 
-Evaluate:
-- Retrieval effectiveness.
-- Answer correctness and faithfulness.
-- Retrieval and end-to-end latency.
-- Indexing time.
-- Storage requirements.
-- Computational and inference costs.
+### High-level architecture
 
-### RQ6. Generalization
+```text
+              ARXIV RESEARCH PAPERS
+                        |
+                 PDF Acquisition
+                        |
+                PDF Text Extraction
+                        |
+                 GROBID / TEI
+                        |
+             Document Structure Parsing
+                        |
+                    Chunking
+                        |
+                Embedding Pipeline
+                        |
+                 Embedding Cache
+                        |
+                  Qdrant Index
+                        |
+                 Retrieval Layer
+                        |
+          +-------------+-------------+
+          |             |             |
+         Dense         BM25         Hybrid
+          |             |             |
+          +-------------+-------------+
+                        |
+                   Reranking
+                   (required for every retrieval mode)
+                        |
+                 Retrieved Evidence
+                        |
+                Evaluation Pipeline
+                        |
+               Retrieval Metrics
+                        |
+                Experiment Reports
+```
 
-Do techniques that perform well on one corpus retain their effectiveness on structurally different corpora?
+The architecture separates document processing, embedding generation, indexing, retrieval, and evaluation so that individual components can be investigated independently.
 
-Investigate which findings generalize, which depend on corpus-specific characteristics, and why.
+## 4. Current Implementation
 
-## 4. Guiding Principles
+### Corpus processing
 
-The project follows these principles:
+The current corpus pipeline supports research-paper acquisition and processing.
 
-1. **No universally optimal architecture:** No retrieval or chunking technique is assumed to be superior across all corpora and queries.
+- Acquisition of arXiv research-paper PDFs.
+- PDF text extraction.
+- GROBID-based TEI/XML extraction.
+- Section and document-block extraction.
+- Tokenizer-aware chunking.
+- Metadata preservation.
 
-2. **Evidence-driven architecture selection:** Every architectural choice must have an identifiable hypothesis and measurable justification.
+The implementation supports extracted-text input as an alternative to GROBID processing.
 
-3. **Corpus-aware evaluation:** Corpus characteristics must be considered experimental variables, not merely implementation details.
+### Embedding experiments
 
-4. **Query-aware evaluation:** Retrieval effectiveness must be evaluated against the information requirements of the queries.
+The project includes experiments comparing three embedding models.
 
-5. **Controlled experimentation:** Change one major experimental variable at a time wherever possible, keeping other conditions consistent.
+The embedding pipeline supports:
 
-6. **Quality versus complexity:** An improvement in retrieval quality must be considered alongside its latency, storage and computational overhead.
+- Configurable embedding generation.
+- Tokenizer-aware input handling.
+- Persistent embedding caches.
+- Resumable processing.
+- Cache validation.
 
-7. **Reproducibility:** Experiments must preserve configurations, dataset versions, provenance, parameters and evaluation results.
+Qwen3-Embedding-8B is also used in the existing embedding infrastructure, with a 4-bit model configuration.
 
-8. **Generalization over benchmark optimization:** A technique should not be considered universally effective simply because it performs well on one benchmark.
+Embedding model comparisons and historical results should be distinguished from newly reproduced benchmark results.
 
-## 5. Initial Dataset
+### Vector indexing
 
-The initial implementation uses the existing arXiv research-paper corpus. Its current acquisition, extraction, chunking, embedding, Qdrant indexing, and query-time retrieval stages provide a baseline for controlled experiments.
+Qdrant is used as the vector database.
 
-Synthetic questions may be used as supplementary experimental data, but their results should be distinguished from human-grounded benchmark results. Additional corpora can be integrated later when their source data, licenses, evidence labels, and preprocessing requirements are established.
+The indexing infrastructure includes:
 
-## 6. Evaluation Methodology
+- Embedding cache validation.
+- Vector and payload storage.
+- Collection/version separation.
+- Upload retries.
+- Upload count verification.
 
-The framework will support controlled comparisons across different configurations.
+The current indexing code uploads dense vectors as float32 and does not configure Qdrant quantization or report collection storage usage. Quantization is a planned experiment, not an implemented feature.
 
-### Retrieval Metrics
-- Evidence Recall@K
-- Precision@K
-- Mean Reciprocal Rank (MRR)
-- nDCG
+### Retrieval
 
-### Generation Metrics
-- Answer correctness
-- Faithfulness
-- Evidence and citation accuracy
+The current retrieval implementation supports:
 
-### Operational Metrics
-- Retrieval latency
-- End-to-end latency
-- Indexing time
-- Index storage
-- Context token consumption
-- Computational and inference cost
+- Dense retrieval.
+- BM25 / sparse text retrieval.
+- Hybrid retrieval.
+- Cross-encoder reranking is applied to every retrieved candidate list.
 
-### Experimental Method
+ColBERT-related encoding experimentation exists, but should not be interpreted as a complete end-to-end ColBERT retrieval implementation.
 
-For each experiment:
+### Evaluation
 
-1. Define the research hypothesis.
-2. Identify the relevant corpus and query characteristics.
-3. Establish a baseline.
-4. Implement the architectural variation.
-5. Keep unrelated variables controlled.
-6. Evaluate retrieval and generation quality.
-7. Measure operational overhead.
-8. Analyze where the technique helps, fails or introduces trade-offs.
-9. Record reproducible findings.
+The project includes embedding comparison experiments and a retrieval evaluation pipeline.
 
-## 7. Initial Implementation Priorities
+The evaluation dimensions include:
 
-The initial development will focus on establishing a reliable evaluation foundation.
-
-| Priority | Component |
+| Metric | Purpose |
 |---|---|
-| 1 | Stable document, paragraph and sentence provenance |
-| 2 | Dataset ingestion and standardized representation |
-| 3 | BM25 retrieval baseline |
-| 4 | Dense retrieval baseline |
-| 5 | Hybrid retrieval and reranking |
-| 6 | Chunking strategy comparisons |
-| 7 | Parent-child and hierarchical retrieval |
-| 8 | Evaluation and experiment tracking |
-| 9 | Cross-corpus evaluation |
+| Recall@K | Whether relevant evidence is retrieved |
+| Precision@K | How much of the retrieved set is relevant |
+| MRR | How highly the first relevant result is ranked |
+| nDCG@K | Ranking quality with graded relevance where available |
 
-Graph retrieval, RAPTOR and other specialized architectures will be investigated when the corpus characteristics and query requirements provide a meaningful reason to test them.
+The evaluation infrastructure focuses on retrieval and evidence relevance. It does not currently establish generated-answer quality, faithfulness, or end-to-end RAG performance.
 
-They will not be implemented merely to increase the number of techniques in the framework.
+## 5. Evaluation Methodology
 
-## 8. Expected Contribution
+A central principle of RagAndEval is to separate retrieval quality from infrastructure performance.
 
-The project does not initially aim to invent another standalone retrieval algorithm.
+A retrieval configuration should not be considered better solely because it achieves a higher retrieval score.
 
-Its intended contribution is a reproducible evaluation framework and empirical investigation that:
+The experiments aim to measure multiple dimensions:
 
-- Compares different RAG architectures under controlled conditions.
-- Connects retrieval performance to corpus and query characteristics.
-- Identifies when architectural complexity provides measurable value.
-- Studies the relationship between retrieval quality and answer quality.
-- Quantifies operational trade-offs.
-- Investigates the generalization of architectural choices across corpora.
+| Dimension | Measurements |
+|---|---|
+| Retrieval quality | Recall@K, Precision@K, MRR, nDCG |
+| Latency | Mean, p50, p95 |
+| Throughput | Queries per second |
+| Storage | Embedding and index size |
+| Compute | Embedding generation and indexing time |
+| Cost | Compute and inference cost per workload |
 
-The longer-term goal is to produce evidence-backed insights that help developers and researchers make better RAG architecture decisions.
+Experiments should control the corpus version, query set, relevance labels, embedding model, and retrieval parameters wherever possible.
 
-## 9. What This Project Is Not
+For the planned Qdrant quantization comparison, capture a storage snapshot for the unquantized baseline and the quantized collection. Record the collection configuration, corpus version, point count, vector and index storage (where the server exposes those fields), payload storage, and RAM usage. Compare retrieval with the same query set, retrieval mode, K, filters, embedding model, and required cross-encoder reranking. Report Recall@K, Precision@K, and F1@K alongside storage and latency; do not treat expected compression ratios as measured results. Keep the unquantized collection as the baseline and use a separate collection or restorable snapshot for the quantized condition.
 
-- It is not another basic RAG chatbot.
-- It is not an attempt to combine every existing RAG technique.
-- It is not an attempt to establish one universally optimal retrieval architecture.
-- It is not primarily a synthetic benchmark generation project.
-- It is not an implementation of GraphRAG or RAPTOR for the sake of using them.
+Results from different corpus versions or evaluation datasets should not be compared as though they were equivalent experiments.
 
-**The central question remains:**
+### Evaluation data
 
-*Under what corpus characteristics and query requirements does a particular RAG architecture work better, why does it work, and is the improvement worth its additional complexity?*
+A major challenge in RAG evaluation is establishing reliable ground-truth evidence for retrieval experiments.
+
+The project aims to maintain consistent evaluation datasets, stable evidence identifiers, and reproducible experimental configurations.
+
+Synthetic questions may help expand experimental coverage, but they should not automatically be treated as equivalent to human-validated ground truth.
+
+Evaluation results are meaningful only when the underlying evidence mapping and corpus version are verified.
+
+## 6. Planned Experiments
+
+The following are research and engineering directions, not claims about completed implementation.
+
+| Area | Planned investigation |
+|---|---|
+| Retrieval | More controlled dense, BM25, hybrid and reranking comparisons |
+| Chunking | Recursive, semantic and structure-aware strategies |
+| Visual retrieval | ColPali as a fallback for mathematical and diagram-based content |
+| Storage | Capture Qdrant storage snapshots, then compare scalar/binary vector quantisation and index-size trade-offs |
+| Performance | Concurrent query load testing and latency profiling |
+| Evaluation | Stable evidence mapping and stronger query coverage |
+| Efficiency | Embedding and indexing cost optimisation |
+
+## 7. Cost and Efficiency Considerations
+
+Efficiency is treated as an architectural requirement rather than an afterthought.
+
+The project explores several opportunities:
+
+- Reusing cached embeddings instead of recomputing them.
+- Separating indexing costs from query-time costs.
+- Measuring the storage overhead of different representations.
+- Investigating quantisation.
+- Avoiding unnecessary LLM invocations during retrieval-only evaluation.
+- Comparing retrieval improvements against their computational overhead.
+
+An important distinction is that retrieval evaluation does not require answer generation for every query.
+
+This allows retrieval experiments to measure evidence quality without introducing unnecessary generation costs.
+
+## 8. Technology Stack
+
+| Component | Technology |
+|---|---|
+| Language | Python |
+| Document extraction | GROBID, TEI/XML |
+| Embeddings | Hugging Face embedding models |
+| Vector database | Qdrant |
+| Retrieval | Dense, BM25, hybrid |
+| Reranking | Cross-encoder |
+| Evaluation | Custom evaluation pipelines |
+| Data processing | JSON, JSONL |
+| Experimentation | Reproducible scripts and benchmark artifacts |
+
+## 9. Repository Structure
+
+```text
+RagAndEval/
+│
+├── download_corpus/
+│   └── download_pdfs.py
+│
+├── preprocessing/
+│   ├── chunking.py
+│   ├── embeddings.py
+│   ├── diagnostics.py
+│   └── data/
+│
+├── retrieval/
+│   ├── qdrant_setup.py
+│   └── search.py
+│
+├── evals/
+│   ├── embeddings/
+│   └── reports/
+│
+├── scripts/
+│   ├── ingest_corpus.py
+│   └── query.py
+│
+├── tests/
+│
+├── docs/
+│
+├── pyproject.toml
+└── README.md
+```
+
+Generated data, embedding caches, credentials, and corpus artifacts should be managed separately from source code.
+
+## 10. Current Limitations
+
+Current limitations include:
+
+- No sufficiently validated, general-purpose gold evaluation dataset for the current corpus.
+- Historical embedding evaluation artifacts require consistency checks and reproduction against the current corpus.
+- Chunk identifiers and evidence mappings require careful version management.
+- ColPali visual retrieval is not yet integrated.
+- Vector quantisation trade-offs require controlled benchmarking.
+- Comprehensive concurrency and load-testing results are not yet established.
+- Answer generation and answer faithfulness are outside the current retrieval evaluator's scope.
+
+## 11. Project Objective
+
+The long-term objective is to move from isolated RAG experiments towards reproducible evaluation and architectural comparison infrastructure.
+
+Rather than providing another predefined RAG pipeline, RagAndEval aims to investigate:
+
+**How should a retrieval architecture be selected when quality, latency, storage, compute and workload requirements compete with one another?**
+
+The intended outcome is a system that helps developers understand architectural trade-offs, reproduce experiments, and make evidence-based retrieval configuration decisions.
+
+---
+
+**Status:** Active experimental development.

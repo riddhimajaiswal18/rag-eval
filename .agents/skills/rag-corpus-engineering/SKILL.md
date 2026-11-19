@@ -47,8 +47,9 @@ Load this skill for work involving the arXiv corpus, PDF processing, extraction 
 
 ### Retrieval and evaluation
 
-- `retrieval/search.py::Retriever.search` supports dense, BM25 text search, and hybrid dense+text reciprocal-rank fusion. Results are limited by `limit` (top-K) and filtered by corpus version; an optional document ID adds a document filter. Dense/hybrid queries encode with Qwen. The CLI optionally reranks returned hits with a cross-encoder.
-- `rerank` is a real second-stage cross-encoder implementation. `colbert_encode` is only an encoding helper; no ColBERT index/search flow is wired into Qdrant or `Retriever.search`.
+- `retrieval/search.py::Retriever.search` supports dense, BM25 text search, and hybrid dense+text reciprocal-rank fusion. Results are limited by `limit` (top-K) and filtered by corpus version; an optional document ID adds a document filter. Dense/hybrid queries encode with Qwen. Every mode passes its retrieved candidates through the cross-encoder before returning results; `limit` is the candidate and result count.
+- `rerank` is a required second-stage cross-encoder step, and its model is loaded lazily and cached. `colbert_encode` is only an encoding helper; no ColBERT index/search flow is wired into Qdrant or `Retriever.search`.
+- The current Qdrant uploader stores dense vectors as float32; it does not configure quantization or save collection storage measurements. Treat quantization and storage snapshot reporting as planned work. A valid comparison preserves an unquantized baseline, records actual server-reported storage/configuration, and holds corpus version, query set, retrieval mode, K, filters, embedding model, and required reranking constant while measuring retrieval metrics and latency.
 - The repository does not currently provide an arXiv answer generator or an end-to-end answer-faithfulness evaluator. `evals/embeddings/compare_embeddings.py` and `_v2.py` are model comparison scripts; `evals/reports/embedding_model_selection.txt` says its saved rankings predate current section-qualified chunk IDs and should be treated as historical pending rerun.
 
 ## 3. Provenance contract
@@ -120,6 +121,7 @@ These are code-inspection findings; do not infer their measured impact without r
 ## 7. Experimental design
 
 - Freeze and record the paper IDs, chunk artifacts/configuration, query set, embedding model/configuration, index version, retrieval mode, filters, and top-K.
-- Preserve a baseline and vary one main factor at a time; use ablations to isolate chunking, embedding, retrieval, and reranking effects.
+- For future quantization studies, capture comparable Qdrant storage snapshots before and after quantization, including available vector, index, payload, disk, and RAM measurements; do not substitute theoretical compression estimates for observed usage.
+- Preserve a baseline and vary one main factor at a time; use ablations to isolate chunking, embedding, and retrieval effects while keeping the required reranking stage fixed.
 - Report retrieval evidence results separately from answer-generation quality. Measure latency, index size, embedding/indexing time, and compute only when instrumented.
 - Treat saved reports as historical unless their dataset, chunk IDs, and configuration match the current artifacts. Explain uncertainty and limits on generalization from a single corpus.

@@ -68,8 +68,10 @@ class RetrievalPipelineTests(unittest.TestCase):
         bodies = []
         retriever._query_text_api = lambda body: (bodies.append(body) or [{"id": "point-1", "score": 0.75, **payload}])
 
-        hits = retriever.search("what happened?", mode="bm25", limit=3, document_id="2005.11401")
+        with patch.object(search, "rerank", side_effect=lambda _query, candidates: candidates) as reranker:
+            hits = retriever.search("what happened?", mode="bm25", limit=3, document_id="2005.11401")
 
+        reranker.assert_called_once_with("what happened?", [{"id": "point-1", "score": 0.75, **payload}])
         self.assertEqual(hits[0]["chunk_id"], payload["chunk_id"])
         self.assertEqual(hits[0]["text"], payload["text"])
         self.assertEqual(hits[0]["score"], 0.75)
@@ -84,8 +86,10 @@ class RetrievalPipelineTests(unittest.TestCase):
         bodies = []
         retriever._query_text_api = lambda body: (bodies.append(body) or [])
 
-        retriever.search("what happened?", mode="hybrid", limit=5, document_id="2005.11401")
+        with patch.object(search, "rerank", side_effect=lambda _query, candidates: candidates) as reranker:
+            retriever.search("what happened?", mode="hybrid", limit=5, document_id="2005.11401")
 
+        reranker.assert_called_once_with("what happened?", [])
         self.assertEqual(bodies[0]["query"], {"rrf": {}})
         self.assertEqual(len(bodies[0]["prefetch"]), 2)
         self.assertEqual(bodies[0]["prefetch"][0]["using"], "dense")

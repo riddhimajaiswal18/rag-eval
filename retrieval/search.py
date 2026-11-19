@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -113,21 +114,27 @@ class Retriever:
             response = self.client.query_points(
                 collection_name=self.collection, query=qvec, using="dense", **common
             )
+            candidates = [{"id": str(p.id), "score": float(p.score), **(p.payload or {})} for p in response.points]
         elif mode == "bm25":
-            return self._text_search(query, limit, document_id)
+            candidates = self._text_search(query, limit, document_id)
         elif mode == "hybrid":
             qvec = self.encode_query(query)
-            return self._hybrid_search(query, np.asarray(qvec, dtype=np.float32).tolist(), limit, document_id)
+            candidates = self._hybrid_search(query, np.asarray(qvec, dtype=np.float32).tolist(), limit, document_id)
         else:
             raise ValueError("mode must be dense, bm25, or hybrid")
-        return [{"id": str(p.id), "score": float(p.score), **(p.payload or {})} for p in response.points]
+        return rerank(query, candidates)
+
+
+@lru_cache(maxsize=1)
+def _load_reranker(model_name: str) -> CrossEncoder:
+    return CrossEncoder(model_name)
 
 
 def rerank(query: str, candidates: list[dict[str, Any]], model_name: str = RERANKER_MODEL) -> list[dict[str, Any]]:
-    """Cross-encoder rerank over a retrieved candidate set."""
+    """Always cross-encoder rerank the retrieved candidate set."""
     if not candidates:
         return []
-    model = CrossEncoder(model_name)
+    model = _load_reranker(model_name)
     pairs = [(query, item["text"]) for item in candidates]
     scores = model.predict(pairs)
     return [item for _, item in sorted(zip(scores, candidates), key=lambda pair: float(pair[0]), reverse=True)]
@@ -151,7 +158,6 @@ def main() -> None:
     parser.add_argument("--query", dest="query_text", help="Query text.")
     parser.add_argument("--mode", choices=("dense", "bm25", "hybrid"), default="hybrid")
     parser.add_argument("--limit", type=int, default=100)
-    parser.add_argument("--rerank", action="store_true")
     parser.add_argument("--version", help="Optional corpus_version; inferred from the selected local corpus cache by default.")
     args = parser.parse_args()
     query = args.query_text or args.question
@@ -174,8 +180,6 @@ def main() -> None:
         raise RuntimeError("Could not determine the selected corpus version; pass --version explicitly.")
     retriever = Retriever(collection, version)
     hits = retriever.search(query, args.mode, args.limit)
-    if args.rerank:
-        hits = rerank(query, hits)
     print(json.dumps(hits, ensure_ascii=False, indent=2))
 
 

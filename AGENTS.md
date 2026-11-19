@@ -10,6 +10,7 @@ This repository is a research codebase for studying how corpus and query charact
 - Consider latency, index/storage overhead, embedding and retrieval compute, robustness, generalization, corpus structure, and query requirements.
 - The implemented arXiv pipeline provides acquisition, extraction, chunking, embeddings, Qdrant indexing, and dense/BM25/hybrid retrieval. The repository does not currently contain a complete answer-generation or answer-faithfulness evaluation path.
 - Keep measured results, historical reports, hypotheses, and estimates clearly distinguished. Preserve fixed datasets, configurations, and baselines for fair comparisons.
+- Qdrant quantization and automated storage snapshots are planned experiments, not current capabilities. The current uploader stores dense vectors as float32. For quantization comparisons, preserve an unquantized baseline, record storage from the actual Qdrant collection, and keep corpus, queries, retrieval settings, K, and required reranking fixed while comparing retrieval metrics and latency.
 
 ## Repository architecture
 
@@ -17,7 +18,7 @@ This repository is a research codebase for studying how corpus and query charact
 - `preprocessing/chunking.py`: arXiv GROBID TEI or extracted-text input, flat section/block construction, tokenizer-aware chunking, and chunk JSON output. GROBID is needed only for uncached TEI in GROBID mode.
 - `preprocessing/embeddings.py`: resumable Qwen3-Embedding-8B embedding cache for arXiv chunks.
 - `retrieval/qdrant_setup.py`: embedding-cache validation, Qdrant schema, chunk payload upload, retries, and upload-count verification.
-- `retrieval/search.py`: dense, Qdrant text/BM25, and hybrid retrieval; optional cross-encoder reranking. `colbert_encode` is a helper, not a complete indexing/search mode.
+- `retrieval/search.py`: dense, Qdrant text/BM25, and hybrid retrieval; every mode cross-encoder reranks the retrieved candidates. `colbert_encode` is a helper, not a complete indexing/search mode.
 - `scripts/ingest_corpus.py`: orchestrates arXiv acquisition, chunking, embedding, and indexing. `scripts/query.py` runs query-time retrieval; `scripts/corpus_status.py` prints local acquisition/chunk counts.
 - `preprocessing/diagnostics.py`: audits cached arXiv TEI/chunks and benchmark-tokenizer lengths.
 - `evals/embeddings/compare_embeddings.py` and `_v2.py`: separate model-comparison experiments. Saved artifacts/reports include historical results and must not be presented as current reruns without verification.
