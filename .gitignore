@@ -17,3 +17,8 @@ rag_corpus/
 
 # IDE
 .vscode/
+
+# Agent instructions and agent configuration
+AGENTS.md
+**/AGENTS.md
+.agents/
